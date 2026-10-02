@@ -46,7 +46,7 @@ function useMoments(c: CaseFile) {
   const top = useMemo(() => [...c.topEvents].sort((a, b) => a.date.localeCompare(b.date)), [c.topEvents]);
   const topIds = new Set(top.map((e) => e.id));
   const [activeId, setActiveId] = useState<string | null>(null);
-  const shownId = activeId ?? (link?.source === "hover" ? link.events.find((id) => topIds.has(id)) ?? null : null) ?? top.at(-1)?.id ?? null;
+  const shownId = activeId ?? (link?.events.find((id) => topIds.has(id)) ?? null) ?? top.at(-1)?.id ?? null;
   const shown = top.find((e) => e.id === shownId) ?? null;
   const btns = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -60,13 +60,12 @@ function useMoments(c: CaseFile) {
     ev.preventDefault();
     btns.current[Math.max(0, Math.min(top.length - 1, next))]?.focus();
   };
-  const dimmed = (e: RankedEvent) =>
-    link?.source === "changes" ? !link.events.includes(e.id) : link?.source === "hover" && !link.events.includes(e.id) && !e.providerIds.some((p) => link.providers.includes(p));
+  const dimmed = (e: RankedEvent) => !!link && !link.events.includes(e.id) && !e.providerIds.some((p) => link.providers.includes(p));
   return { link, top, topIds, shown, btns, activate, onKey, dimmed };
 }
 
 export function CaseSpine({ c, className }: { c: CaseFile; className?: string }) {
-  const { link, top, topIds, shown, btns, activate, onKey } = useMoments(c);
+  const { top, topIds, shown, btns, activate, onKey, dimmed } = useMoments(c);
   const { open } = useSources();
   const reasonFor = (e: RankedEvent) => c.digest.reasons?.[e.id] ?? e.reason;
   const { start, end, upcoming, pct, years, openQ } = useSpineScale(c);
@@ -91,7 +90,6 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
   const size = (s: number) => 11 + ((s - minScore) / Math.max(0.01, maxScore - minScore)) * 9;
 
   const minorOn = (lane: Lane["id"]) => c.events.filter((e) => !topIds.has(e.id) && laneOf(e) === lane && e.date >= start && e.date <= end);
-  const changes = link?.source === "changes" ? new Set(link.events) : null;
 
   return (
     <figure className={cn("a2-spine", className)} aria-label={`Case timeline from ${fmtDate(start)} to ${fmtDate(end)}`}>
@@ -126,7 +124,7 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
                   key={e.id}
                   aria-hidden
                   data-spine-minor
-                  className={cn("absolute top-1/2 h-2.5 w-px -translate-y-1/2 transition-opacity duration-200", changes ? (changes.has(e.id) ? "opacity-100" : "opacity-15") : "opacity-50")}
+                  className="absolute top-1/2 h-2.5 w-px -translate-y-1/2 opacity-50"
                   style={{ left: `${pct(e.date)}%`, background: lane.color }}
                 />
               ))}
@@ -159,7 +157,7 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
                 if (laneOf(e) !== lane.id) return null;
                 const s = size(e.score);
                 const isShown = shown?.id === e.id;
-                const dim = changes ? !changes.has(e.id) : link?.source === "hover" && !link.events.includes(e.id) && !e.providerIds.some((p) => link.providers.includes(p));
+                const dim = dimmed(e);
                 return (
                   <button
                     key={e.id}
@@ -183,7 +181,6 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
                         "block rounded-full ring-[3px] ring-paper transition-[transform,opacity] duration-200 ease-out group-hover:scale-125",
                         isShown && "scale-125",
                         dim && "opacity-25",
-                        changes?.has(e.id) && "outline-2 outline-offset-2 outline-signal [outline-style:solid]",
                       )}
                       style={{ width: s, height: s, background: lane.color }}
                     />
@@ -210,11 +207,6 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
           {years.map((y) => (
             <span key={y} className="absolute inset-y-0 w-px bg-line" style={{ left: `${pct(y)}%` }} />
           ))}
-          {changes && c.changes.since.slice(0, 10) < c.today ? (
-            <span className="absolute inset-y-0 border-l border-signal bg-signal-wash/60" style={{ left: `${pct(c.changes.since.slice(0, 10))}%`, width: `${pct(c.today) - pct(c.changes.since.slice(0, 10))}%` }}>
-              <span className="absolute -top-2.5 right-1 whitespace-nowrap rounded-full bg-signal px-1.5 py-0.5 text-[10.5px] font-medium text-paper">New</span>
-            </span>
-          ) : null}
           {c.sol.date && c.sol.date >= start && c.sol.date <= end ? (
             <span className="absolute inset-y-0 border-l border-dashed" style={{ left: `${pct(c.sol.date)}%`, borderColor: c.sol.status === "satisfied" ? "var(--good)" : "var(--exposure)" }}>
               <span

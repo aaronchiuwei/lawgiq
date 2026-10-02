@@ -1,25 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /**
  * Front Page state, shared by the masthead and the page:
- * - link: linked highlighting. Hovering a provider, an event or turning on
- *   "since you were here" lights every matching element on the page and dims
- *   the rest of that element's group.
+ * - link: linked highlighting. Hovering a provider or an event lights every
+ *   matching element on the page and dims the rest of that element's group.
  */
 
 /** How much of a section shows: 2 on the board (brief), 3 when its card is expanded (full). */
 export type Depth = 2 | 3;
 
-type Link = { providers: string[]; events: string[]; source: "hover" | "changes" } | null;
+type Link = { providers: string[]; events: string[]; source: "hover" } | null;
 
 type Ctx = {
   link: Link;
   setLink: (l: Link) => void;
-  changesOn: boolean;
-  toggleChanges: () => void;
-  changeIds: Set<string>;
   briefing: boolean;
   setBriefing: (on: boolean) => void;
 };
@@ -37,33 +33,23 @@ export function useFrontMaybe() {
   return useContext(FrontCtx);
 }
 
-export function FrontPageState({ children, changeIds }: { children: ReactNode; changeIds: string[] }) {
+export function FrontPageState({ children }: { children: ReactNode }) {
   const [link, setLink] = useState<Link>(null);
-  const [changesOn, setChangesOn] = useState(false);
   const [briefing, setBriefing] = useState(false);
-  const ids = useMemo(() => new Set(changeIds), [changeIds]);
 
-  const toggleChanges = useCallback(() => setChangesOn((v) => !v), []);
-
-  // Keyboard: b for the briefing, n for "since you were here". Never while typing.
+  // Keyboard: b for the briefing. Never while typing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || briefing) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       if (e.key === "b") setBriefing(true);
-      else if (e.key === "n") toggleChanges();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleChanges, briefing]);
+  }, [briefing]);
 
-  const effectiveLink: Link = useMemo(() => link ?? (changesOn ? { providers: [], events: changeIds, source: "changes" } : null), [link, changesOn, changeIds]);
-
-  const value = useMemo(
-    () => ({ link: effectiveLink, setLink, changesOn, toggleChanges, changeIds: ids, briefing, setBriefing }),
-    [effectiveLink, changesOn, toggleChanges, ids, briefing],
-  );
+  const value = useMemo(() => ({ link, setLink, briefing, setBriefing }), [link, briefing]);
   return <FrontCtx.Provider value={value}>{children}</FrontCtx.Provider>;
 }
 

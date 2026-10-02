@@ -7,13 +7,12 @@ import type { ReactNode } from "react";
 import { FreshnessIndicator, RoleSwitcher, SyncProvider } from "@/components/case/chrome";
 import { SourceProvider } from "@/components/case/sources";
 import type { Freshness, Role } from "@/lib/access";
-import { cn } from "@/lib/utils";
 import { FrontPageState, useFrontMaybe } from "./state";
 import { ThemeToggle } from "./theme-toggle";
 
 /**
  * Front Page chrome: a sticky folio line. On the firm view it carries the
- * "Brief me" walkthrough and the "since you were here" switch.
+ * "Brief me" walkthrough.
  * Every role gets the light / dark toggle.
  */
 export function FrontShell({
@@ -21,20 +20,18 @@ export function FrontShell({
   providerId,
   providers,
   freshness,
-  changeIds = [],
   children,
 }: {
   role: Role;
   providerId?: string;
   providers: { id: string; shortName: string }[];
   freshness?: { fetchedAt: string } & Partial<Freshness>;
-  changeIds?: string[];
   children: ReactNode;
 }) {
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", duration: 0.45, bounce: 0.12 }}>
       <SourceProvider docScope={role === "provider" ? `role=provider&provider=${encodeURIComponent(providerId ?? "")}` : role === "client" ? "role=client" : ""}>
-        <FrontPageState changeIds={changeIds}>
+        <FrontPageState>
           <SyncProvider className="opt-a opt-a2 reveal-root min-h-[100dvh] bg-paper text-ink">
             <a href="#main" className="skip-link">
               Skip to the case
@@ -42,7 +39,7 @@ export function FrontShell({
             <header className="a2-masthead sticky top-0 z-40 border-b border-line bg-[color-mix(in_oklab,var(--paper)_86%,transparent)] backdrop-blur-xl">
               <div className="mx-auto flex h-14 max-w-[84rem] items-center gap-x-5 px-4 sm:px-8">
                 <Link href="/" className="font-[family-name:var(--font-display)] text-[19px] font-semibold tracking-[-0.01em] text-ink">
-                  Lawgiq
+                  <span className="text-signal">Law</span>giq
                 </Link>
                 <div className="flex-1" />
                 {role === "firm" ? <FirmControls /> : null}
@@ -71,7 +68,7 @@ export function FrontShell({
 function FirmControls() {
   const front = useFrontMaybe();
   if (!front) return null;
-  const { changesOn, toggleChanges, changeIds, setBriefing } = front;
+  const { setBriefing } = front;
   return (
     <div className="flex items-center gap-2">
       <button
@@ -83,21 +80,6 @@ function FirmControls() {
         <PlayIcon size={12} weight="fill" aria-hidden />
         <span className="hidden sm:inline">Brief me</span>
       </button>
-      {changeIds.size ? (
-        <button
-          type="button"
-          aria-pressed={changesOn}
-          onClick={toggleChanges}
-          title="Light up everything new since your last visit (press n)"
-          className={cn(
-            "flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-[background-color,border-color,color,transform] duration-200 active:scale-[0.97]",
-            changesOn ? "border-signal bg-signal text-paper" : "border-line bg-card-bg text-ink hover:border-signal",
-          )}
-        >
-          <span className={cn("tnum grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11.5px]", changesOn ? "bg-paper text-signal" : "bg-signal-wash text-signal")}>{changeIds.size}</span>
-          <span className="hidden sm:inline">new</span>
-        </button>
-      ) : null}
     </div>
   );
 }

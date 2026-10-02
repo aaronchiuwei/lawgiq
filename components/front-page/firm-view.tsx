@@ -21,7 +21,6 @@ import {
   PhoneIcon,
   ReceiptIcon,
   ScalesIcon,
-  SparkleIcon,
   StethoscopeIcon,
   WarningCircleIcon,
   WarningDiamondIcon,
@@ -373,7 +372,7 @@ function KpiStrip({ c, h }: { c: CaseFile; h: CaseHeadlines }) {
       >
         <span className={LABEL}>Case strength</span>
         <span className="mt-2 flex items-center gap-3">
-          <ScoreRing value={c.scorecard.total} size={46} />
+          <ScoreRing value={c.scorecard.total} size={72} />
           <span className="text-[12px] leading-snug text-ink-soft">
             of 100
             {h.strength.weakest ? <span className="block text-ink">weak: {h.strength.weakest.label.toLowerCase()}</span> : null}
@@ -422,11 +421,13 @@ const LG_COLS = ["", "lg:col-span-1", "lg:col-span-2", "lg:col-span-3", "lg:col-
 
 /** Shares 12 columns among cards in proportion to their usual widths (largest remainder). */
 function apportion(widths: number[]): number[] {
+  if (!widths.length) return [];
   const total = widths.reduce((a, b) => a + b, 0);
   const exact = widths.map((w) => (w * 12) / total);
   const out = exact.map(Math.floor);
   const order = exact.map((x, i) => [x - Math.floor(x), i] as const).sort((a, b) => b[0] - a[0]);
-  for (let k = 0; k < 12 - out.reduce((a, b) => a + b, 0); k++) out[order[k][1]]++;
+  const short = 12 - out.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < short; k++) out[order[k][1]]++;
   return out;
 }
 
@@ -686,10 +687,9 @@ function ConflictCount({ items }: { items: Conflict[] }) {
 }
 
 function ChangesBody({ c, depth }: { c: CaseFile; depth: Depth }) {
-  const { changesOn, toggleChanges } = useFront();
   const items = depth === 3 ? c.changes.items : c.changes.items.slice(0, 4);
   if (!items.length)
-    return <p className="text-[13px] text-ink-soft">You&apos;re up to date. Anything added in Clio after your last visit shows here and lights up across the board.</p>;
+    return <p className="text-[13px] text-ink-soft">You&apos;re up to date. Anything added in Clio after your last visit shows here.</p>;
   return (
     <div className="flex flex-1 flex-col">
       <ul aria-live="polite" className="grid gap-x-6 sm:grid-cols-2">
@@ -705,21 +705,7 @@ function ChangesBody({ c, depth }: { c: CaseFile; depth: Depth }) {
           );
         })}
       </ul>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          aria-pressed={changesOn}
-          onClick={toggleChanges}
-          className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-[12.5px] font-medium transition-[background-color,border-color,color,transform] duration-200 active:scale-[0.97]",
-            changesOn ? "border-signal bg-signal text-paper" : "border-line-strong text-ink hover:border-signal",
-          )}
-        >
-          <SparkleIcon size={13} weight="fill" aria-hidden />
-          {changesOn ? "Lit up across the board" : "Light them up on the board (n)"}
-        </button>
-        {c.changes.items.length > items.length ? <span className="text-[12px] text-ink-soft">{c.changes.items.length - items.length} more when expanded</span> : null}
-      </div>
+      {c.changes.items.length > items.length ? <p className="mt-3 text-[12px] text-ink-soft">{c.changes.items.length - items.length} more when expanded</p> : null}
     </div>
   );
 }

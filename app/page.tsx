@@ -36,7 +36,7 @@ export default async function Home({ searchParams }: { searchParams: OptionSearc
   }
   const view = await getFirmView({ recordOpen: true });
   return (
-    <FrontShell role={role} providers={providers} freshness={view.freshness} changeIds={view.case.changes.items.map((e) => e.id)}>
+    <FrontShell role={role} providers={providers} freshness={view.freshness}>
       <FrontPageFirm view={view} />
     </FrontShell>
   );
