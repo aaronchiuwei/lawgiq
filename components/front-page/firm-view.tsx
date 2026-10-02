@@ -353,7 +353,7 @@ function Kpi({ label, children, className, source, tone, extra }: { label: strin
 
 /* ================================================================ bento == */
 
-type CardSpec = { id: SectionId; label: string; icon: Icon; span: string; hl: Headline; figure?: ReactNode; flag?: ReactNode; brief?: string };
+type CardSpec = { id: SectionId; label: string; icon: Icon; span: string; hl: Headline; figure?: ReactNode; flag?: ReactNode; brief?: string; /** Shown under the headline at Glance, where the body is hidden. */ glance?: ReactNode };
 
 function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
   const c = view.case;
@@ -383,6 +383,7 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       hl: h.story,
       figure: `${c.topEvents.length} moments`,
       flag: storyConflicts.length ? <ConflictCount items={storyConflicts} /> : null,
+      glance: <CaseSpineSimple c={c} glance className="mt-3" />,
       // On the board: the simple spine. Opened in full (or at Full depth): every lane and the story.
       body: (d) =>
         d === 3 ? (
@@ -554,6 +555,16 @@ function Card({ spec, depth, onOpen, children }: { spec: CardSpec; depth: Depth;
                 className="mt-3 flex min-w-0 flex-1 flex-col"
               >
                 {children}
+              </motion.div>
+            ) : spec.glance ? (
+              <motion.div
+                key="glance"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.3, ease: EASE, delay: 0.06 } }}
+                exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                className="min-w-0"
+              >
+                {spec.glance}
               </motion.div>
             ) : null}
           </AnimatePresence>
