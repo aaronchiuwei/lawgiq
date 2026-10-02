@@ -27,8 +27,6 @@ Clio (GET) ──► ocr_pipeline.py ──► data/ocr/{document_id}.json   per
 3. **`ui/dashboard.py`**: local web page at http://127.0.0.1:8765 with a ranked attorney view (score breakdown,
    category probabilities, every document page linked to the source PDF) and a provider view (shareable items only).
 
-`clio_ingest/` is an alternative ingest (folder-structured output under `data/<MATTER_ID>/`); see its README.
-
 ## Run
 
 ```bash
