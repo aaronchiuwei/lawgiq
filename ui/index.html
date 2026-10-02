@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case Dashboard</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --ink: #1c2330; --muted: #6b7380; --line: #e3e6eb;
+    --accent: #2f5bd3; --high: #c2412d; --mid: #c98a12; --low: #8a93a0;
+    --share: #1d8a52; --review: #b7791f; --internal: #6b7380;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .tabs { margin-left: auto; display: flex; background: var(--bg); border-radius: 8px; padding: 3px; }
+  .tabs button { border: 0; background: none; padding: 7px 16px; border-radius: 6px; cursor: pointer; font: inherit; color: var(--muted); }
+  .tabs button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 16px; padding: 16px 24px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .card .n { font-size: 24px; font-weight: 700; }
+  .card .l { color: var(--muted); font-size: 12px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .filters select, .filters input { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  .filters input { flex: 1; min-width: 160px; }
+  .list { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: center; }
+  .row.noscore { grid-template-columns: 104px 1fr auto; }
+  .row:last-child { border-bottom: 0; }
+  .row:hover { background: #f1f4fb; }
+  .row.sel { background: #e8eefc; }
+  .score { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 4px; }
+  .bar i { display: block; height: 100%; border-radius: 2px; }
+  .title { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--muted); font-size: 12px; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+  .chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); white-space: nowrap; }
+  .chip.share { color: var(--share); border-color: #b8e0c9; background: #eef8f2; }
+  .chip.review { color: var(--review); border-color: #f0d9ac; background: #fdf6e8; }
+  .chip.internal { color: var(--internal); }
+  aside { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; align-self: start; }
+  aside h2 { font-size: 16px; margin: 0 0 6px; word-break: break-word; }
+  aside h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 0 6px; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 13px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .prob { display: grid; grid-template-columns: 150px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; margin: 3px 0; }
+  .prob .bar { margin: 0; height: 6px; }
+  pre { white-space: pre-wrap; word-break: break-word; font: 12.5px/1.5 ui-monospace, Consolas, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin: 0; max-height: 360px; overflow: auto; }
+  .page { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; }
+  .page summary { padding: 7px 10px; cursor: pointer; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .page summary a { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 12px; }
+  .page pre { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; }
+  .m-tesseract { color: var(--review); } .m-failed { color: var(--high); }
+  .empty { color: var(--muted); padding: 30px; text-align: center; }
+  .section-h { font-size: 13px; font-weight: 600; margin: 16px 0 8px; color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="matter">Loading…</h1>
+    <div class="sub" id="matterSub"></div>
+  </div>
+  <div class="tabs">
+    <button data-view="attorney" class="on">Attorney</button>
+    <button data-view="provider">Medical provider</button>
+  </div>
+</header>
+<main>
+  <section>
+    <div class="cards" id="cards"></div>
+    <div class="filters" id="filters">
+      <input id="q" placeholder="Search titles and text…">
+      <select id="fType"><option value="">All types</option></select>
+      <select id="fCat"><option value="">All categories</option></select>
+      <select id="fShare"><option value="">Any sharing</option><option>share</option><option>review</option><option>internal</option></select>
+      <select id="sort"><option value="score">Sort: importance</option><option value="date">Sort: newest</option><option value="date_asc">Sort: oldest</option></select>
+    </div>
+    <p class="note" id="providerNote" hidden>What the treating providers would see: only entries Jev rates safe to share (≥ 0.90). Items between 0.50 and 0.90 wait for attorney approval and are listed separately. Scores and internal entries are hidden.</p>
+    <div id="list"></div>
+  </section>
+  <aside id="detail"><div class="empty">Select an entry to see why Jev ranked it and its source text.</div></aside>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pretty = s => String(s || "").replace(/_/g, " ");
+const typeLabel = {note: "Note", communication: "Communication", task: "Task", calendar_entry: "Calendar", document: "Document"};
+const scoreColor = v => v >= .7 ? "var(--high)" : v >= .4 ? "var(--mid)" : "var(--low)";
+let data = {entries: []}, view = "attorney", selected = null;
+
+fetch("/api/entries").then(r => r.json()).then(d => {
+  data = d;
+  const m = d.matter || {};
+  $("#matter").textContent = m.display_number ? `${m.display_number}` : "Case dashboard";
+  $("#matterSub").textContent = [m.description, m.status, m.open_date && `opened ${m.open_date}`].filter(Boolean).join(" · ");
+  const types = [...new Set(d.entries.map(e => e.source_type))];
+  const cats = [...new Set(d.entries.map(e => e.top_category))].sort();
+  $("#fType").innerHTML += types.map(t => `<option value="${t}">${typeLabel[t] || t}</option>`).join("");
+  $("#fCat").innerHTML += cats.map(c => `<option value="${c}">${pretty(c)}</option>`).join("");
+  render();
+});
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  view = b.dataset.view; selected = null; render();
+  $("#detail").innerHTML = '<div class="empty">Select an entry.</div>';
+});
+["#q", "#fType", "#fCat", "#fShare", "#sort"].forEach(s => $(s).oninput = render);
+
+function filtered(pool) {
+  const q = $("#q").value.toLowerCase(), t = $("#fType").value, c = $("#fCat").value, sh = $("#fShare").value;
+  let out = pool.filter(e => (!t || e.source_type === t) && (!c || e.top_category === c) &&
+    (!sh || e.shareable_status === sh) && (!q || (e.title + " " + (e.text || "")).toLowerCase().includes(q)));
+  const s = $("#sort").value;
+  const d = e => e.date || "";
+  if (s === "date") out.sort((a, b) => d(b).localeCompare(d(a)));
+  else if (s === "date_asc") out.sort((a, b) => d(a).localeCompare(d(b)));
+  else out.sort((a, b) => b.importance_score - a.importance_score);
+  return out;
+}
+
+function render() {
+  const E = data.entries, att = view === "attorney";
+  $("#providerNote").hidden = att;
+  $("#fShare").hidden = !att;
+  if (att) {
+    const hi = E.filter(e => e.importance_score >= .7).length;
+    const dl = E.filter(e => e.top_category === "litigation_deadline" && e.urgency_score >= .75).length;
+    const docs = E.filter(e => e.source_type === "document");
+    const pages = docs.reduce((a, e) => a + (e.page_count || 0), 0);
+    $("#cards").innerHTML = [
+      [E.length, "entries triaged"], [hi, "high importance (≥ 0.70)"], [dl, "hard deadlines"],
+      [`${docs.length} / ${pages}`, "documents / pages read"],
+      [E.filter(e => e.shareable_status === "share").length, "shareable with providers"],
+    ].map(([n, l]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+    $("#list").innerHTML = listHTML(filtered(E), true);
+  } else {
+    const share = filtered(E.filter(e => e.shareable_status === "share"));
+    const pending = filtered(E.filter(e => e.shareable_status === "review" &&
+      ["injury_treatment", "medical_bills"].includes(e.top_category)));
+    $("#cards").innerHTML = [
+      [share.length, "items shared"], [pending.length, "awaiting attorney approval"],
+      [E.filter(e => e.shareable_status === "internal").length, "withheld (internal)"],
+    ].map(([n, l]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+    $("#list").innerHTML = `<div class="section-h">Shared with treating providers</div>${listHTML(share, false)}
+      <div class="section-h">Treatment and billing items awaiting attorney approval</div>${listHTML(pending, false)}`;
+  }
+  document.querySelectorAll(".row").forEach(r => r.onclick = () => select(r.dataset.key));
+}
+
+function listHTML(rows, showScore) {
+  if (!rows.length) return '<div class="list"><div class="empty">Nothing here.</div></div>';
+  return `<div class="list">${rows.map(e => {
+    const key = e.source_type + ":" + e.source_id;
+    const docInfo = e.source_type === "document" && e.page_count ? `<span>${e.page_count} pp${e.ocr_pages ? ` · ${e.ocr_pages} OCR` : ""}</span>` : "";
+    return `<div class="row ${showScore ? "" : "noscore"} ${selected === key ? "sel" : ""}" data-key="${key}">
+      <div>${showScore ? `<div class="score" style="color:${scoreColor(e.importance_score)}">${e.importance_score.toFixed(2)}</div>
+        <div class="bar"><i style="width:${e.importance_score * 100}%;background:${scoreColor(e.importance_score)}"></i></div>`
+        : `<span class="chip">${typeLabel[e.source_type] || e.source_type}</span>`}</div>
+      <div style="min-width:0"><div class="title">${esc(e.title)}</div>
+        <div class="meta"><span>${(e.date || "").slice(0, 10)}</span>${showScore ? `<span>${typeLabel[e.source_type]}</span>` : ""}
+          <span>${pretty(e.top_category)}</span>${docInfo}</div></div>
+      <div>${showScore ? `<span class="chip ${e.shareable_status}">${e.shareable_status}</span>` : ""}</div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+async function select(key) {
+  selected = key; render();
+  const e = data.entries.find(x => x.source_type + ":" + x.source_id === key);
+  const att = view === "attorney";
+  let html = `<h2>${esc(e.title)}</h2><div class="meta"><span class="chip">${typeLabel[e.source_type]}</span>
+    <span class="chip">${pretty(e.top_category)}</span>${att ? `<span class="chip ${e.shareable_status}">${e.shareable_status} ${e.shareable_prob.toFixed(2)}</span>` : ""}</div>`;
+  if (att) {
+    html += `<h3>Why this score</h3><div class="kv">
+      <span>Importance</span><span><b>${e.importance_score.toFixed(2)}</b> = 0.75 × impact + 0.25 × urgency</span>
+      <span>Impact</span><span>${e.impact_score.toFixed(2)}</span>
+      <span>Urgency</span><span>${e.urgency_score.toFixed(2)}</span>
+      <span>Date</span><span>${(e.date || "—").slice(0, 10)}${e.date_source ? ` <span class="chip">${pretty(e.date_source)}</span>` : ""}${e.date_text ? ` from “${esc(e.date_text)}”` : ""}</span>
+      <span>Model</span><span>${esc(e.model)}</span></div>
+      <h3>Category probabilities</h3>` +
+      Object.entries(e.category_probs).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+        `<div class="prob"><span>${pretty(k)}</span><div class="bar"><i style="width:${v * 100}%;background:var(--accent)"></i></div><span>${v.toFixed(2)}</span></div>`).join("");
+  }
+  if (e.source_type === "document") {
+    html += `<h3>Pages</h3><div id="pages" class="note">Loading pages…</div>`;
+  } else {
+    html += `<h3>Text from Clio</h3><pre>${esc(e.text || "(no text)")}</pre>`;
+  }
+  $("#detail").innerHTML = html;
+  if (e.source_type === "document") {
+    const r = await fetch(`/api/doc/${e.source_id}`);
+    if (!r.ok) { $("#pages").textContent = "No OCR output for this document yet."; return; }
+    const doc = await r.json();
+    $("#pages").outerHTML = doc.pages.map((p, i) => `<details class="page" ${i === 0 ? "open" : ""}>
+      <summary><b>Page ${p.page}</b><span class="m-${p.method}">${pretty(p.method)}</span><span class="meta">${p.char_count} chars</span>
+      <a href="/raw/${e.source_id}.pdf#page=${p.page}" target="_blank" onclick="event.stopPropagation()">open PDF p.${p.page} ↗</a></summary>
+      <pre>${esc(p.text || "(empty)")}</pre></details>`).join("");
+  }
+}
+</script>
+</body>
+</html>
