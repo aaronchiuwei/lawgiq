@@ -119,12 +119,12 @@ def make_handler(matter, entries):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--triage-dir", default=str(ROOT.parent / "jev-triage" / "data" / "triage"))
+    ap.add_argument("--triage-dir", default=str(ROOT / "data" / "triage"))
     ap.add_argument("--port", type=int, default=8765)
     args = ap.parse_args()
     triage_dir = pathlib.Path(args.triage_dir)
     if not triage_dir.exists():
-        sys.exit(f"No triage output at {triage_dir}; run Jev triage first or pass --triage-dir")
+        sys.exit(f"No triage output at {triage_dir}; run python scripts/triage.py first or pass --triage-dir")
     matter, detail = load_clio_detail()
     entries = load_entries(triage_dir, detail)
     print(f"{len(entries)} triaged entries from {triage_dir}")
