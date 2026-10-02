@@ -29,6 +29,9 @@ export interface SourceRef {
   body?: string;
   /** Deep link into Clio. */
   clioUrl: string | null;
+  /** Documents only: the page this reference points at (1-based) and the document's page count. */
+  page?: number;
+  pageCount?: number;
 }
 
 export interface CustomFieldValue {
@@ -137,6 +140,29 @@ export interface TriageScore {
   documentDate: string | null;
 }
 
+/** How a linked record relates to a task (scripts/link_tasks.py). */
+export type TaskRelation = "scheduled_as" | "produces" | "verifies" | "follow_up" | "context";
+
+/** One inferred link from a task to another Clio record; Jev confirmed it from code-found candidates. */
+export interface TaskLink {
+  kind: Exclude<SourceKind, "matter" | "custom_field" | "contact" | "relationship">;
+  id: string;
+  /** Documents: the page the link points at. */
+  page?: number;
+  relation: TaskRelation;
+  /** Jev's probability that the record belongs to the task. */
+  relatedProb: number;
+  /** Why code proposed it, e.g. "contact: David Capiola", "date: 2 days apart". */
+  signals: string[];
+}
+
+/** Links and the waiting-on judgement for one task (data/links/task_{id}.json). */
+export interface TaskLinks {
+  taskId: string;
+  waiting: { prob: number; party: string | null };
+  links: TaskLink[];
+}
+
 export interface Matter {
   id: string;
   description: string;
@@ -164,6 +190,8 @@ export interface MatterBundle {
   documents: ClioDocument[];
   /** Jev triage keyed by `${source_type}:${id}` (note, communication, task, calendar_entry, document). */
   triage: Record<string, TriageScore>;
+  /** Inferred task links keyed by task id (scripts/link_tasks.py); absent when the script hasn't run. */
+  taskLinks?: Record<string, TaskLinks>;
   /** Where this bundle came from. */
   origin: "clio";
   fetchedAt: string;

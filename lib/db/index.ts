@@ -286,6 +286,11 @@ export function listShares(matterKey: string): Omit<ShareRow, "payload_json">[] 
 }
 
 /** Provider opened a shared link: record it and return the snapshot they were sent. */
+/** Reads a share without counting it as an open (for checking what a shared link may load). */
+export function readShare(token: string): ShareRow | null {
+  return (getDb().prepare("SELECT * FROM shares WHERE token = ?").get(token) as ShareRow | undefined) ?? null;
+}
+
 export function openShare(token: string): ShareRow | null {
   const d = getDb();
   const row = d.prepare("SELECT * FROM shares WHERE token = ?").get(token) as ShareRow | undefined;

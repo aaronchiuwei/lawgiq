@@ -71,12 +71,15 @@ export function jaccard(a: string[], b: string[]): number {
 /** Builds SourceRefs for any record in the bundle, with a Clio deep link in live mode. */
 export function sourceFactory(bundle: MatterBundle) {
   const live = bundle.origin === "clio";
+  // Documents carry their page count so the source drawer can page through the embedded PDF.
+  const pageCounts = new Map(bundle.documents.map((d) => [d.id, d.pageCount]));
   return function source(
     kind: SourceKind,
     id: string,
     label: string,
-    opts: { date?: string; text?: string } = {},
+    opts: { date?: string; text?: string; page?: number } = {},
   ): SourceRef {
+    const pageCount = kind === "document" ? pageCounts.get(id) : undefined;
     return {
       kind,
       id,
@@ -85,6 +88,8 @@ export function sourceFactory(bundle: MatterBundle) {
       snippet: opts.text ? snippet(opts.text) : undefined,
       body: opts.text,
       clioUrl: live ? clioDeepLink(kind, id, bundle.matter.id) : null,
+      ...(pageCount ? { pageCount } : {}),
+      ...(kind === "document" && opts.page ? { page: opts.page } : {}),
     };
   };
 }

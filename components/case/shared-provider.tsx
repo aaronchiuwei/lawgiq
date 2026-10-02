@@ -7,9 +7,9 @@ import { fmtDate } from "@/lib/format";
 import { SourceProvider } from "./sources";
 
 /** Provider-facing page for a shared link: the Front Page provider layout, no firm chrome. */
-export function SharedProviderPage({ view, sharedAt }: { view: ProviderView; sharedAt: string }) {
+export function SharedProviderPage({ view, sharedAt, token }: { view: ProviderView; sharedAt: string; token: string }) {
   return (
-    <SourceProvider>
+    <SourceProvider docScope={`share=${encodeURIComponent(token)}`}>
       <div className="opt-a opt-a2 reveal-root min-h-[100dvh] bg-paper text-ink">
         <header className="mx-auto flex max-w-[76rem] items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-8">
           <span className="font-[family-name:var(--font-display)] text-[19px] font-semibold text-ink">Case status</span>

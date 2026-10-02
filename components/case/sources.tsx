@@ -20,6 +20,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import type { SourceKind, SourceRef } from "@/lib/clio/types";
 import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { DocumentViewer } from "./document-viewer";
 
 /**
  * The trust layer. Every number and date on screen carries a SourceChip;
@@ -64,7 +65,12 @@ type Ctx = { open: (sources: SourceRef[], index?: number) => void };
 const SourceCtx = createContext<Ctx>({ open: () => {} });
 export const useSources = () => useContext(SourceCtx);
 
-export function SourceProvider({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * `docScope` is the query string the embedded document viewer sends with each request
+ * ("" for the firm, "role=provider&provider=…", "role=client" or "share=<token>"), so the
+ * server only serves documents the current view already cites.
+ */
+export function SourceProvider({ children, className, docScope = "" }: { children: ReactNode; className?: string; docScope?: string }) {
   const [state, setState] = useState<{ sources: SourceRef[]; index: number; open: boolean }>({ sources: [], index: 0, open: false });
   const returnFocus = useRef<HTMLElement | null>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
@@ -75,6 +81,7 @@ export function SourceProvider({ children, className }: { children: ReactNode; c
   const close = useCallback(() => setState((s) => ({ ...s, open: false })), []);
   const value = useMemo(() => ({ open }), [open]);
   const active = state.sources[state.index];
+  const isDoc = active?.kind === "document";
 
   // A plain panel, not a modal: the page stays scrollable and clickable, the
   // panel retargets mid-transition, and focus moves in and back out.
@@ -107,7 +114,8 @@ export function SourceProvider({ children, className }: { children: ReactNode; c
         data-state={state.open ? "open" : "closed"}
         {...(!state.open ? { inert: true } : {})}
         className={cn(
-          "source-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-[min(100vw,30rem)] flex-col border-l border-line bg-card-bg text-ink",
+          "source-drawer fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line bg-card-bg text-ink transition-[max-width] duration-300",
+          isDoc ? "max-w-[min(100vw,56rem)]" : "max-w-[min(100vw,30rem)]",
           state.open ? "shadow-[0_24px_64px_-12px_color-mix(in_oklab,var(--ink)_28%,transparent)]" : "pointer-events-none",
           className,
         )}
@@ -158,8 +166,10 @@ export function SourceProvider({ children, className }: { children: ReactNode; c
           </nav>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-          {active?.body || active?.snippet ? (
+        <div className={cn("min-h-0 flex-1 px-5 py-5", isDoc ? "flex flex-col" : "overflow-y-auto")}>
+          {isDoc && active ? (
+            <DocumentViewer key={`${active.id}:${active.page ?? 1}`} source={active} scope={docScope} />
+          ) : active?.body || active?.snippet ? (
             <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{active.body ?? active.snippet}</p>
           ) : (
             <p className="text-[15px] leading-relaxed text-ink-soft">This record has no text body. Its value is shown where it was cited.</p>

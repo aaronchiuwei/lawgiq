@@ -11,11 +11,12 @@ import { deriveProviders, type Provider } from "./providers";
 import { rankTopEvents, scoreEvent, type RankedEvent } from "./rank";
 import { deriveScorecard, type Scorecard } from "./scorecard";
 import { deriveSpecials, type SpecialsBreakdown } from "./specials";
+import { deriveTaskBoard, type TaskBoard } from "./task-board";
 import { bucketTasks, type TaskBuckets } from "./tasks";
 import { deriveTreatment, type Treatment } from "./treatment";
 import { findField, isoDay, sourceFactory } from "./util";
 
-export type { ChangeItem, Conflict, Deadline, Digest, Kpis, Liability, Milestone, Provider, RankedEvent, Scorecard, SolDeadline, SpecialsBreakdown, TaskBuckets, Treatment, ClientContact };
+export type { ChangeItem, Conflict, Deadline, Digest, Kpis, Liability, Milestone, Provider, RankedEvent, Scorecard, SolDeadline, SpecialsBreakdown, TaskBoard, TaskBuckets, Treatment, ClientContact };
 
 /**
  * Everything the firm view can know about one matter, derived from the Clio
@@ -45,6 +46,8 @@ export interface CaseFile {
   digest: Digest;
   changes: ReturnType<typeof whatChanged>;
   tasks: TaskBuckets;
+  /** Every task in board columns with its related records. Firm view only. */
+  taskBoard: TaskBoard;
   sol: SolDeadline;
   deadlines: Deadline[];
   clientContact: ClientContact;
@@ -126,6 +129,7 @@ export function deriveCase(bundle: MatterBundle, opts: Partial<DeriveOptions> & 
     digest: digestOverride ?? rulesDigest(bundle, kpis, treatment, clientName, itemCount, inputHash, conflicts.some((x) => x.anchor === "coverage")),
     changes: whatChanged(events, today, options.lastOpenedAt, DERIVE_DEFAULTS.firstVisitLookbackDays),
     tasks,
+    taskBoard: deriveTaskBoard(bundle, today, source),
     sol: deriveSol(bundle, today, source),
     deadlines: deriveDeadlines(bundle, today, source),
     clientContact: deriveClientContact(bundle, today, options.clientContactStaleDays, source),

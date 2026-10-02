@@ -4,13 +4,14 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { normaliseExport, type ClioExport } from "./normalise";
-import type { MatterBundle, MatterSource, TriageScore } from "./types";
+import type { MatterBundle, MatterSource, TaskLink, TaskLinks, TriageScore } from "./types";
 
 /**
  * Reads the Python pipeline's output under data/ (gitignored):
  *   data/clio/matter.json   scripts/export_matter.py   raw Clio records (GET only)
  *   data/triage/*.json      scripts/triage.py          Jev importance + shareability per entry
  *   data/ocr/*.json         ocr_pipeline.py            per-page document text
+ *   data/links/*.json       scripts/link_tasks.py      records related to each task, waiting-on
  * Nothing about the case lives in this repo; run the scripts to populate data/.
  */
 
@@ -62,7 +63,24 @@ export class PipelineMatterSource implements MatterSource {
       return { ...d, pageCount: pages.length, ocrExcerpt: text.slice(0, OCR_EXCERPT_CHARS) || undefined };
     });
 
-    return { ...bundle, documents, triage };
+    const taskLinks: Record<string, TaskLinks> = {};
+    for (const l of await readJsonDir(path.join(this.dataDir, "links"))) {
+      const waiting = (l.waiting ?? {}) as { prob?: number; party?: string | null };
+      taskLinks[String(l.task_id)] = {
+        taskId: String(l.task_id),
+        waiting: { prob: Number(waiting.prob ?? 0), party: waiting.party ?? null },
+        links: ((l.links ?? []) as Json[]).map((x) => ({
+          kind: String(x.type) as TaskLink["kind"],
+          id: String(x.id),
+          page: x.page === undefined ? undefined : Number(x.page),
+          relation: String(x.relation) as TaskLink["relation"],
+          relatedProb: Number(x.related_prob ?? 0),
+          signals: (x.signals as string[] | undefined) ?? [],
+        })),
+      };
+    }
+
+    return { ...bundle, documents, triage, taskLinks };
   }
 }
 

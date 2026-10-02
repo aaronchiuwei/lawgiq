@@ -17,5 +17,5 @@ export default async function SharedLink({ params }: { params: Promise<{ token: 
   const share = openShare(token);
   if (!share) notFound();
   const view = JSON.parse(share.payload_json) as ProviderView;
-  return <SharedProviderPage view={view} sharedAt={share.created_at} />;
+  return <SharedProviderPage view={view} sharedAt={share.created_at} token={token} />;
 }

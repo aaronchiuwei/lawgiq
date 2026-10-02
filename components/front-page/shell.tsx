@@ -33,7 +33,7 @@ export function FrontShell({
 }) {
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", duration: 0.45, bounce: 0.12 }}>
-      <SourceProvider>
+      <SourceProvider docScope={role === "provider" ? `role=provider&provider=${encodeURIComponent(providerId ?? "")}` : role === "client" ? "role=client" : ""}>
         <FrontPageState changeIds={changeIds}>
           <SyncProvider className="opt-a opt-a2 reveal-root min-h-[100dvh] bg-paper text-ink">
             <a href="#main" className="skip-link">

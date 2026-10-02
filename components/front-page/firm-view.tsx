@@ -11,6 +11,7 @@ import {
   ClockCountdownIcon,
   GaugeIcon,
   HourglassMediumIcon,
+  KanbanIcon,
   ListChecksIcon,
   PathIcon,
   PersonIcon,
@@ -45,6 +46,7 @@ import { BriefMe } from "./brief-me";
 import { MoneyRuler } from "./money";
 import { CaseSpine, CaseSpineSimple } from "./spine";
 import { useFront, useLinkHandlers, useLinked, type Depth } from "./state";
+import { TaskBoardSection, taskBoardHeadline } from "./task-board";
 
 gsap.registerPlugin(useGSAP);
 
@@ -67,6 +69,7 @@ const SECTIONS = [
   { id: "needs", label: "Needs you" },
   { id: "story", label: "Timeline" },
   { id: "changes", label: "What changed" },
+  { id: "tasks", label: "Tasks" },
   { id: "injuries", label: "Injuries" },
   { id: "care", label: "Care" },
   { id: "money", label: "Specials" },
@@ -418,6 +421,15 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       },
       figure: <span className="text-signal">{changes} new</span>,
       body: (d) => <ChangesBody c={c} depth={d} />,
+    },
+    {
+      id: "tasks",
+      label: "Task board",
+      icon: KanbanIcon,
+      span: "md:col-span-6 lg:col-span-12",
+      hl: { text: taskBoardHeadline(c), sub: null, figure: `${c.taskBoard.columns.overdue.length} overdue` },
+      figure: `${c.taskBoard.columns.overdue.length} overdue · ${c.taskBoard.columns.waiting.length} waiting`,
+      body: () => <TaskBoardSection c={c} />,
     },
     {
       id: "injuries",
