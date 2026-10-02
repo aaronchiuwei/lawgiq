@@ -1,7 +1,7 @@
-import { FixtureMatterSource } from "../lib/clio/fixture";
+import { PipelineMatterSource } from "../lib/clio/pipeline";
 import { deriveCase } from "../lib/derive";
 (async () => {
-  const b = await new FixtureMatterSource().loadMatter();
+  const b = await new PipelineMatterSource().loadMatter();
   const c = deriveCase(b, { today: "2026-10-02" });
   const strip = (o: unknown) => JSON.parse(JSON.stringify(o, (k, v) => (k === "source" || k === "sources" || k === "also" || k==="body"|| k==="duplicates") ? undefined : v));
   const sec = process.argv[2];

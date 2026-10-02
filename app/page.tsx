@@ -123,9 +123,9 @@ export default async function Home() {
           What they all share
         </h2>
         <div>
-          <h3 className="text-[15px] font-semibold text-ink">Read-only Clio, derived once</h3>
+          <h3 className="text-[15px] font-semibold text-ink">Read-only Clio pipeline, derived once</h3>
           <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-soft">
-            A GET-only API v4 client and a fixture adapter implement one interface. Every figure is derived in <code className="text-[13px]">lib/derive</code>; summaries are cached per data change.
+            GET-only Python scripts export the matter, OCR its documents and score every entry with Jev. Every figure is derived in <code className="text-[13px]">lib/derive</code>; summaries are cached per data change.
           </p>
         </div>
         <div>

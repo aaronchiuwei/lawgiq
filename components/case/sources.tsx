@@ -179,7 +179,7 @@ export function SourceProvider({ children, className }: { children: ReactNode; c
             </a>
           ) : (
             <p className="text-[13px] leading-relaxed text-ink-soft">
-              Fixture mode: this record comes from the Sapini seed file, so there is no Clio page to open. With a Clio token set, this button deep-links to the record.
+              This record has no page to open in Clio.
             </p>
           )}
         </div>

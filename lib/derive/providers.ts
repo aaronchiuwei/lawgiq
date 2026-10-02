@@ -1,4 +1,4 @@
-import type { MatterBundle, SourceRef } from "../clio/types";
+import type { Contact, MatterBundle, SourceRef } from "../clio/types";
 import type { SourceFn } from "./util";
 
 /**
@@ -59,8 +59,19 @@ function specialtyOf(description: string): string {
     .replace(/^./, (c) => c.toUpperCase());
 }
 
+const domainOf = (c: Contact) => c.emails[0]?.address.split("@")[1]?.toLowerCase() ?? null;
+
+/** The company a person works at: Clio's company field, else a company contact sharing their email domain. */
+function employerOf(person: Contact, contacts: Contact[]): string | null {
+  if (person.company) return person.company;
+  const domain = domainOf(person);
+  if (!domain) return null;
+  return contacts.find((c) => c.type === "Company" && domainOf(c) === domain)?.name ?? null;
+}
+
 export function deriveProviders(bundle: MatterBundle, source: SourceFn): Provider[] {
   const byId = new Map(bundle.contacts.map((c) => [c.id, c]));
+  const employer = new Map(bundle.contacts.map((c) => [c.id, c.type === "Person" ? employerOf(c, bundle.contacts) : null]));
   const providers: Provider[] = [];
 
   for (const rel of bundle.relationships) {
@@ -68,17 +79,17 @@ export function deriveProviders(bundle: MatterBundle, source: SourceFn): Provide
     const contact = byId.get(rel.contactId);
     if (!contact) continue;
     // A person who works at a provider company is a clinician, not a provider.
-    if (contact.type === "Person" && contact.company) {
-      const parent = bundle.contacts.find((c) => c.type === "Company" && c.name === contact.company);
+    if (contact.type === "Person" && employer.get(contact.id)) {
+      const parent = bundle.contacts.find((c) => c.type === "Company" && c.name === employer.get(contact.id));
       if (parent && bundle.relationships.some((r) => r.contactId === parent.id)) continue;
     }
 
     const clinicians = bundle.contacts
-      .filter((c) => c.type === "Person" && c.company === contact.name)
+      .filter((c) => c.type === "Person" && employer.get(c.id) === contact.name)
       .map((c) => [c.title, c.firstName, c.lastName].filter(Boolean).join(" "));
     const parenthetical = [...rel.description.matchAll(/\(([^)]+)\)/g)].map((m) => m[1].replace(/,.*$/, "").trim());
     const lastNames = [
-      ...bundle.contacts.filter((c) => c.type === "Person" && c.company === contact.name).map((c) => c.lastName ?? ""),
+      ...bundle.contacts.filter((c) => c.type === "Person" && employer.get(c.id) === contact.name).map((c) => c.lastName ?? ""),
       ...parenthetical.map((p) => p.split(/\s+/).pop() ?? ""),
     ].filter((n) => n.length > 2);
 

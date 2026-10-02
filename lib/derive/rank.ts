@@ -3,9 +3,12 @@ import type { CaseEvent } from "./events";
 /**
  * Rules-based significance ranking. Each rule names WHY an event matters, so
  * every ranked event carries a human reason ("Shifted liability", "Surgery").
- * When an AI digest is available it can re-rank and re-word; these rules are
- * the deterministic baseline and the fallback.
+ * Jev's importance score (scripts/triage.py, 0–1) adds up to JEV_WEIGHT on
+ * top, so the model breaks ties and lifts records the rules under-rate; the
+ * rules stay the deterministic baseline and the fallback when triage hasn't run.
  */
+
+const JEV_WEIGHT = 3;
 
 export type EventCategory = "medical" | "liability" | "coverage" | "legal" | "damages" | "client" | "admin";
 
@@ -96,7 +99,7 @@ export function scoreEvent(e: CaseEvent): RankedEvent {
   }
   return {
     ...e,
-    score: (best?.effective ?? 0) + KIND_BONUS[e.kind],
+    score: Math.round(((best?.effective ?? 0) + KIND_BONUS[e.kind] + (e.jev?.importance ?? 0) * JEV_WEIGHT) * 100) / 100,
     reason: best?.reason ?? null,
     ruleId: best?.id ?? null,
     category: best?.category ?? "admin",

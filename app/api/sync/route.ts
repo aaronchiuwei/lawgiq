@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { loadBundle } from "@/lib/server/case";
 
-/** Re-reads the matter from Clio (GET only) into our snapshot. */
+/** Re-runs scripts/export_matter.py (Clio GET only) and re-reads the pipeline output. */
 export async function POST() {
   try {
     const { bundle, syncError } = await loadBundle({ force: true });

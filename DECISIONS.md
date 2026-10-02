@@ -64,7 +64,7 @@ Screens: `docs/screens/option-a2-*`.
 
 ## Architecture decisions
 
-- **One data path, two sources.** `lib/clio/client.ts` reads Clio API v4 (GET only, paginated, retries 429) and `lib/clio/fixture.ts` reads the seed JSON. Both return the same `MatterBundle`. `FIXTURE_MODE=1`, or no `CLIO_ACCESS_TOKEN`, selects the fixture. Nothing downstream knows which ran.
+- **One data path: the Python pipeline.** `scripts/export_matter.py` reads Clio API v4 (GET only, paginated, retries 429) into `data/clio/matter.json`; `ocr_pipeline.py` and `scripts/triage.py` add per-page document text and Jev scores. `lib/clio/pipeline.ts` reads those files into one `MatterBundle`. No case data is checked in; the old seed-JSON fixture is gone.
 - **Read-only, enforced in code.** `ClioClient.request()` only accepts GET and throws `ClioReadOnlyError` otherwise (tested). Everything we persist lives in SQLite (`data/lawgiq.db`): Clio snapshots, digests, last-opened timestamps, settings, provider visibility, the sharing log with open tracking, and client photos.
 - **No case facts in components.** Every number, date and name comes from `lib/derive`. Rules use generic legal and medical vocabulary (e.g. "recommended" + a procedure phrase; "By medical provider:" task prefix; anatomical regions), never Sapini facts. Where data is missing, components show an empty state.
 - **Access enforced in the data layer.** Pages are server components. They call `lib/server/case.ts`, which returns only the role's selector output (`lib/access`): `selectProviderView` builds a new object from an allowlist of candidate items (their requests, their bills, their records, their own treatment points, plain-English milestones), then drops anything the attorney excluded. Valuation, wage loss, liability notes, credibility risks, other providers and client contact details are never candidates. Tests scan the serialized payload for forbidden strings. `/api/view` exposes the exact payload for inspection.
@@ -81,7 +81,7 @@ Screens: `docs/screens/option-a2-*`.
 
 - **No auth.** One demo attorney identity (`attorney-demo`). The role switcher is a demo affordance; in production the role comes from the session, and provider access is only through share tokens.
 - **Provider identity.** Providers are Clio relationships whose description reads as treating care. A person contact working at a provider company (Dr. Capiola at McCulloch) is folded into the practice. Specials lines without a Clio contact (surgical center, imaging, physiatry) show in the firm view only.
-- **Deep links.** Clio doesn't document web-app URLs, so `lib/clio/links.ts` uses the current hash routes and a configurable base. In fixture mode there is no Clio record, so the drawer says so instead of linking.
+- **Deep links.** Clio doesn't document web-app URLs, so `lib/clio/links.ts` uses the current hash routes and a configurable base.
 - **The `review-animations` skill isn't installed in this environment.** We ran `improve-animations` (the audit counterpart) instead, plus impeccable's critique with separate design-review and detector passes. Findings and fixes are below.
 - **"Today"** is the real clock, which matches the dataset's 2026-10-02. `DATASET_TODAY` pins it.
 

@@ -98,7 +98,8 @@ export function deriveKpis(bundle: MatterBundle, events: CaseEvent[], source: So
         }
       : null;
 
-  const items = bundle.expenses.map((x) => ({
+  // Clio also carries the providers' treatment charges as expense entries; those are specials, not firm spend.
+  const items = bundle.expenses.filter((x) => !/^medical treatment charges/i.test(x.note)).map((x) => ({
     date: x.date,
     amount: x.total,
     label: x.note.split("\n")[0].split(":")[0],

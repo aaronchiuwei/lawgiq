@@ -1,7 +1,6 @@
 /**
  * Domain model for one Clio matter, normalised from Clio Manage API v4 responses.
- * Both the live client and the fixture adapter produce exactly this shape, so
- * nothing downstream knows (or cares) where the data came from.
+ * Built from the Python pipeline's output (lib/clio/pipeline.ts).
  */
 
 export type SourceKind =
@@ -28,7 +27,7 @@ export interface SourceRef {
   snippet?: string;
   /** Full text for the drawer (notes, emails). */
   body?: string;
-  /** Deep link into Clio. Null in fixture mode, where no Clio record exists. */
+  /** Deep link into Clio. */
   clioUrl: string | null;
 }
 
@@ -120,6 +119,22 @@ export interface ClioDocument {
   folder: string;
   receivedAt: string;
   bytes?: number;
+  /** From ocr_pipeline.py, when the document has been processed. */
+  pageCount?: number;
+  ocrExcerpt?: string;
+}
+
+/** One entry's Jev scores from scripts/triage.py (data/triage). */
+export interface TriageScore {
+  /** 0.75 × impact + 0.25 × urgency, 0–1. */
+  importance: number;
+  impact: number;
+  urgency: number;
+  category: string;
+  shareableProb: number;
+  shareable: "share" | "review" | "internal";
+  /** The document's own date Jev picked from its text, when confident. */
+  documentDate: string | null;
 }
 
 export interface Matter {
@@ -147,13 +162,14 @@ export interface MatterBundle {
   calendarEntries: CalendarEntry[];
   expenses: Expense[];
   documents: ClioDocument[];
+  /** Jev triage keyed by `${source_type}:${id}` (note, communication, task, calendar_entry, document). */
+  triage: Record<string, TriageScore>;
   /** Where this bundle came from. */
-  origin: "clio" | "fixture";
+  origin: "clio";
   fetchedAt: string;
 }
 
-/** The one interface both the live Clio client and the fixture adapter implement. */
 export interface MatterSource {
-  readonly origin: "clio" | "fixture";
+  readonly origin: "clio";
   loadMatter(): Promise<MatterBundle>;
 }

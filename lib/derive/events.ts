@@ -1,4 +1,4 @@
-import type { MatterBundle, SourceRef } from "../clio/types";
+import type { MatterBundle, SourceRef, TriageScore } from "../clio/types";
 import { providersMentioned, type Provider } from "./providers";
 import { isoDay, jaccard, tokens, type SourceFn } from "./util";
 
@@ -26,6 +26,8 @@ export interface CaseEvent {
   createdAt?: string;
   /** Other records saying the same thing (exact duplicates collapsed into this one). */
   duplicates: SourceRef[];
+  /** Jev triage for this record (scripts/triage.py), when it has been scored. */
+  jev: TriageScore | null;
 }
 
 function humaniseDocName(name: string): string {
@@ -38,10 +40,11 @@ export function buildEvents(bundle: MatterBundle, providers: Provider[], source:
   const clientId = bundle.matter.clientId;
   const events: CaseEvent[] = [];
   const push = (
-    e: Omit<CaseEvent, "providerIds" | "duplicates" | "partyIds" | "outbound"> & { providerIds?: string[]; partyIds?: string[]; outbound?: boolean },
+    e: Omit<CaseEvent, "providerIds" | "duplicates" | "partyIds" | "outbound" | "jev"> & { providerIds?: string[]; partyIds?: string[]; outbound?: boolean },
   ) =>
     events.push({
       ...e,
+      jev: bundle.triage?.[`${e.source.kind}:${e.id}`] ?? null,
       outbound: e.outbound ?? false,
       providerIds: e.providerIds ?? providersMentioned(`${e.title} ${e.text}`, providers),
       partyIds: e.partyIds ?? [],
@@ -122,7 +125,15 @@ export function buildEvents(bundle: MatterBundle, providers: Provider[], source:
       kind: "document",
       title,
       text: `${title}, filed in ${d.folder.replace(/^\d+\s*/, "")}.`,
-      source: source("document", d.id, `Document · ${title}`, { date: d.receivedAt, text: `${title}, received ${isoDay(d.receivedAt)} into the ${d.folder.replace(/^\d+\s*/, "")} folder.` }),
+      source: source("document", d.id, `Document · ${title}`, {
+        date: d.receivedAt,
+        text: [
+          `${title}, received ${isoDay(d.receivedAt)} into the ${d.folder.replace(/^\d+\s*/, "")} folder${d.pageCount ? ` (${d.pageCount} page${d.pageCount === 1 ? "" : "s"})` : ""}.`,
+          d.ocrExcerpt,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      }),
       providerIds: [],
       involvesClient: false,
     });

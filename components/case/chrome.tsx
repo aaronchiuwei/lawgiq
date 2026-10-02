@@ -77,11 +77,6 @@ export function FreshnessIndicator({
       <span className={cn("tnum", failed && !syncing ? "text-caution" : "text-ink-soft")} title={failed ?? undefined}>
         {compact && !failed && !syncing ? when : label}
       </span>
-      {freshness.origin === "fixture" && !compact && !readOnly ? (
-        <span className="rounded-full border border-line px-1.5 py-px text-[11px] text-ink-soft" title="FIXTURE_MODE: reading the Sapini seed file through the Clio adapter interface">
-          Fixture
-        </span>
-      ) : null}
       {readOnly ? null : <button
         type="button"
         onClick={sync}

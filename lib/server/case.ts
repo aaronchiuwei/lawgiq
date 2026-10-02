@@ -1,6 +1,6 @@
 import "server-only";
 import { aiEnabled, AI_MODEL, generateAiDigest } from "../ai/digest";
-import { getMatterSource, isFixtureMode, type MatterBundle } from "../clio";
+import { getMatterSource, runExport, type MatterBundle } from "../clio";
 import { DERIVE_DEFAULTS, resolveToday } from "../derive/config";
 import { bundleHash, deriveCase, type CaseFile, type Digest } from "../derive";
 import {
@@ -36,10 +36,9 @@ import {
 
 /** Prototype has no auth; one attorney identity for last-opened tracking. */
 export const DEMO_USER = "attorney-demo";
-const SYNC_TTL_MS = Number(process.env.SYNC_TTL_MINUTES ?? 10) * 60_000;
 
 export function matterKey(): string {
-  return isFixtureMode() ? "fixture" : `clio:${process.env.CLIO_MATTER_ID ?? process.env.CLIO_MATTER_QUERY ?? "default"}`;
+  return `clio:${process.env.MATTER_ID ?? "default"}`;
 }
 
 export interface LoadedBundle {
@@ -47,26 +46,27 @@ export interface LoadedBundle {
   syncError: { message: string; at: string } | null;
 }
 
-/** Sync from Clio (GET only) when forced, missing, or older than the TTL. */
+/**
+ * Reads the pipeline's files under data/ on every call (they are small and
+ * local). A forced sync first re-runs scripts/export_matter.py (Clio GET only).
+ * If reading fails, the last good snapshot is served, marked stale.
+ */
 export async function loadBundle(opts: { force?: boolean } = {}): Promise<LoadedBundle> {
   const key = matterKey();
-  const snap = readSnapshot(key);
-  const stale = !snap || Date.now() - Date.parse(snap.fetched_at) > SYNC_TTL_MS;
-  if (snap && !stale && !opts.force) {
-    return {
-      bundle: JSON.parse(snap.bundle_json) as MatterBundle,
-      syncError: snap.last_error ? { message: snap.last_error, at: snap.last_error_at! } : null,
-    };
-  }
   try {
+    if (opts.force) await runExport();
     const bundle = await getMatterSource().loadMatter();
-    writeSnapshot(key, bundle.origin, bundle.fetchedAt, bundleHash(bundle), JSON.stringify(bundle));
+    const snap = readSnapshot(key);
+    const hash = bundleHash(bundle);
+    if (!snap || snap.input_hash !== hash || snap.last_error) {
+      writeSnapshot(key, bundle.origin, bundle.fetchedAt, hash, JSON.stringify(bundle));
+    }
     return { bundle, syncError: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const snap = readSnapshot(key);
     if (!snap) throw err;
     recordSyncError(key, message);
-    // Serve the last good snapshot, clearly marked stale.
     return { bundle: JSON.parse(snap.bundle_json) as MatterBundle, syncError: { message, at: new Date().toISOString() } };
   }
 }

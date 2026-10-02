@@ -14,7 +14,7 @@ import { explainStage, nextStepForClient, plainAppointment, plainAsk } from "./p
 export type Role = "firm" | "provider" | "client";
 
 export interface Freshness {
-  origin: "clio" | "fixture";
+  origin: "clio";
   fetchedAt: string;
   syncError: { message: string; at: string } | null;
   itemCount: number;

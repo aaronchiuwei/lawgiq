@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { FixtureMatterSource } from "../lib/clio/fixture";
-import { ClioClient, ClioReadOnlyError } from "../lib/clio/client";
+import { PipelineMatterSource } from "../lib/clio/pipeline";
 import type { MatterBundle } from "../lib/clio/types";
 import { deriveCase, type CaseFile } from "../lib/derive";
 import { selectClientView, selectProviderView } from "../lib/access";
@@ -10,9 +9,16 @@ let bundle: MatterBundle;
 let c: CaseFile;
 
 beforeAll(async () => {
-  bundle = await new FixtureMatterSource().loadMatter();
+  bundle = await new PipelineMatterSource().loadMatter();
   c = deriveCase(bundle, { today: TODAY });
 });
+
+/** Provider contact id by name: ids come from Clio, so tests look them up. */
+const providerId = (name: string): string => {
+  const p = c.providers.find((x) => x.name.includes(name));
+  if (!p) throw new Error(`No provider named ${name}`);
+  return p.id;
+};
 
 const clone = (b: MatterBundle): MatterBundle => JSON.parse(JSON.stringify(b));
 
@@ -73,7 +79,8 @@ describe("money", () => {
     expect(c.kpis.specials?.value).toBe(118400);
     expect(c.kpis.specials?.interim).toBe(true);
     expect(c.specials?.total).toBe(118400);
-    expect(c.specials?.coverage).toEqual({ reported: 8, of: 10 });
+    // The live tally covers all nine providers, so there is no "X of Y reported" caveat.
+    expect(c.specials?.coverage).toBeNull();
   });
   it("reads the Medicaid lien and exhausted no-fault", () => {
     expect(c.kpis.liens[0].amount).toBe(22180);
@@ -92,19 +99,19 @@ describe("treatment", () => {
     expect(open?.followUps).toBe(5);
   });
   it("computes documentation gaps from dated records, not assumptions", () => {
-    const pt = c.treatment.providers.find((p) => p.providerId === "contact-sportscare")!;
+    const pt = c.treatment.providers.find((p) => p.providerId === providerId("SportsCare"))!;
     expect(pt.gaps.length).toBeGreaterThan(0);
     expect(pt.gaps.every((g) => g.days > c.thresholds.treatmentGapDays)).toBe(true);
     expect(pt.nextScheduled).toBe("2026-10-10");
   });
   it("treats a produced records range as continuous coverage", () => {
-    const chiro = c.treatment.providers.find((p) => p.providerId === "contact-rocklandchiro")!;
+    const chiro = c.treatment.providers.find((p) => p.providerId === providerId("Rockland Chiropractic"))!;
     // DOI+3 through DOI+212 is one production: no gap inside it.
     expect(chiro.gaps.some((g) => g.from < "2023-11-21" && g.to <= "2023-11-21")).toBe(false);
   });
   it("respects the configurable gap threshold", () => {
     const loose = deriveCase(bundle, { today: TODAY, treatmentGapDays: 400 });
-    const pt = loose.treatment.providers.find((p) => p.providerId === "contact-sportscare")!;
+    const pt = loose.treatment.providers.find((p) => p.providerId === providerId("SportsCare"))!;
     expect(pt.gaps.every((g) => g.days > 400)).toBe(true);
   });
 });
@@ -181,7 +188,7 @@ describe("role scoping", () => {
   ];
 
   it("omits restricted fields from the McCulloch provider view", () => {
-    const v = selectProviderView(c, "contact-mcculloch", { showCoverageAmount: false, items: {} })!;
+    const v = selectProviderView(c, providerId("McCulloch"), { showCoverageAmount: false, items: {} })!;
     const json = JSON.stringify(v);
     for (const word of forbiddenForProvider) expect(json, word).not.toContain(word);
     expect(v.coverage.amount).toBeNull();
@@ -192,21 +199,21 @@ describe("role scoping", () => {
   });
 
   it("shows the coverage amount only when the attorney allows it", () => {
-    const v = selectProviderView(c, "contact-mcculloch", { showCoverageAmount: true, items: {} })!;
+    const v = selectProviderView(c, providerId("McCulloch"), { showCoverageAmount: true, items: {} })!;
     expect(v.coverage.amount).toBe(100000);
   });
 
   it("physically drops items the attorney excluded", () => {
-    const full = selectProviderView(c, "contact-sportscare", { showCoverageAmount: false, items: {} })!;
+    const full = selectProviderView(c, providerId("SportsCare"), { showCoverageAmount: false, items: {} })!;
     const key = full.requests[0].key;
-    const v = selectProviderView(c, "contact-sportscare", { showCoverageAmount: false, items: { [key]: false, attendance: false } })!;
+    const v = selectProviderView(c, providerId("SportsCare"), { showCoverageAmount: false, items: { [key]: false, attendance: false } })!;
     expect(v.requests.find((r) => r.key === key)).toBeUndefined();
     expect(v.attendance.released).toBe(false);
     expect(v.attendance.points).toEqual([]);
   });
 
   it("never lets another provider's medical milestones into a provider feed", () => {
-    const v = selectProviderView(c, "contact-sportscare", { showCoverageAmount: false, items: {} })!;
+    const v = selectProviderView(c, providerId("SportsCare"), { showCoverageAmount: false, items: {} })!;
     expect(v.feed.some((f) => /surgery/i.test(f.text))).toBe(false);
     expect(v.questions).toEqual([]);
   });
@@ -219,12 +226,5 @@ describe("role scoping", () => {
     expect(v.stage.current).toBe("Litigation");
     expect(v.asks[0].title).toMatch(/commission records/);
     expect(v.nextAppointment?.date).toBe("2026-10-09");
-  });
-});
-
-describe("clio client", () => {
-  it("refuses any verb other than GET", async () => {
-    const client = new ClioClient("token") as unknown as { request: (u: string, m: string) => Promise<unknown> };
-    await expect(client.request("https://app.clio.com/api/v4/notes.json", "POST")).rejects.toBeInstanceOf(ClioReadOnlyError);
   });
 });

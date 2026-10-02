@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { FixtureMatterSource } from "../lib/clio/fixture";
+import { PipelineMatterSource } from "../lib/clio/pipeline";
 import type { MatterBundle } from "../lib/clio/types";
 import { deriveCase, type CaseFile } from "../lib/derive";
 import { deriveHeadlines, spotsFor } from "../lib/derive/headlines";
@@ -9,7 +9,7 @@ let bundle: MatterBundle;
 let c: CaseFile;
 
 beforeAll(async () => {
-  bundle = await new FixtureMatterSource().loadMatter();
+  bundle = await new PipelineMatterSource().loadMatter();
   c = deriveCase(bundle, { today: TODAY });
 });
 
