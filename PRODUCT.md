@@ -1,6 +1,6 @@
 # Product
 
-Inferred from the hackathon brief (UI_OPTIONS_PROMPT.md); the user asked not to be interviewed.
+Inferred from the hackathon brief; the user asked not to be interviewed.
 
 ## What it is
 
@@ -22,4 +22,4 @@ A visual digest of one personal-injury case file, read live and read-only from C
 
 ## Surfaces
 
-`/option-a` Briefing, `/option-b` Story and `/option-c` Command are three competing designs of the same product (mode: Operate for the firm, Read for provider and client). `/` compares them.
+`/` is the Front Page, the one design of the product (mode: Operate for the firm, Read for provider and client).
