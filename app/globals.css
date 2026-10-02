@@ -1,0 +1,502 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-text);
+  --font-mono: var(--font-num);
+  --font-heading: var(--font-display);
+  --font-display: var(--font-display);
+  --font-text: var(--font-text);
+  --font-num: var(--font-num);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-card-bg: var(--card-bg);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-signal: var(--signal);
+  --color-signal-wash: var(--signal-wash);
+  --color-exposure: var(--exposure);
+  --color-exposure-wash: var(--exposure-wash);
+  --color-caution: var(--caution);
+  --color-caution-wash: var(--caution-wash);
+  --color-good: var(--good);
+  --color-good-wash: var(--good-wash);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+
+/* ------------------------------------------------------------------------
+   Design tokens. Shared atoms (source chips, drawer, switcher) read these
+   semantic names; the Front Page (.opt-a) sets them for its world.
+   Tokens sit on <html> via :has() so portaled overlays inherit them.
+   ------------------------------------------------------------------------ */
+
+:root {
+  /* Fallback: neutral graphite. */
+  --paper: #f3f3f1;
+  --paper-2: #e9e9e6;
+  --card-bg: #fbfbfa;
+  --ink: #1b1c1e;
+  --ink-soft: #595b60;
+  --line: #d9d9d4;
+  --line-strong: #b7b8b2;
+  --signal: #2346a8;
+  --signal-wash: #e2e8f7;
+  --exposure: #a8381d;
+  --exposure-wash: #f6e1d9;
+  --caution: #845400;
+  --caution-wash: #f5e8cc;
+  --good: #2a6a3c;
+  --good-wash: #ddebdd;
+  --font-display: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-text: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-num: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --radius: 0.625rem;
+  --scrim: color-mix(in oklab, var(--ink) 16%, transparent);
+}
+
+/* Front Page base tokens: warm newsprint neutrals, ink-blue for sourced facts. */
+html:has(.opt-a) {
+  --paper: #f1efea;
+  --paper-2: #e8e5dd;
+  --card-bg: #f8f7f3;
+  --ink: #1f2023;
+  --ink-soft: #5e5f63;
+  --line: #d9d5cb;
+  --line-strong: #b4aea1;
+  --signal: #1b4f72;
+  --signal-wash: #dbe5ec;
+  --exposure: #a33b1e;
+  --exposure-wash: #f2ddd4;
+  --caution: #855600;
+  --caution-wash: #f3e6ca;
+  --good: #2e6a3d;
+  --good-wash: #dcead9;
+  --font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
+  --font-text: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-num: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --radius: 0.375rem;
+}
+@media (prefers-color-scheme: dark) {
+  html:has(.opt-a) {
+    --paper: #161719;
+    --paper-2: #1e1f22;
+    --card-bg: #1c1d20;
+    --ink: #edebe5;
+    --ink-soft: #a6a49d;
+    --line: #313237;
+    --line-strong: #4a4b51;
+    --signal: #8fb9da;
+    --signal-wash: #1c2a36;
+    --exposure: #ee8d6d;
+    --exposure-wash: #3a2019;
+    --caution: #e3b55e;
+    --caution-wash: #352813;
+    --good: #8cc79a;
+    --good-wash: #19301f;
+  }
+}
+
+/* shadcn semantic tokens follow the page tokens. */
+:root {
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--card-bg);
+  --card-foreground: var(--ink);
+  --popover: var(--card-bg);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-2);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--paper-2);
+  --accent-foreground: var(--ink);
+  --destructive: var(--exposure);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--signal);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-text);
+    scrollbar-color: var(--line-strong) transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: var(--signal-wash);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 0.75rem;
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 0.375rem;
+  transform: translateY(-200%);
+  transition: transform 160ms var(--ease-out-strong);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* "New since your last visit": a wash that fades once the row has been seen. */
+.is-new {
+  position: relative;
+  isolation: isolate;
+}
+.is-new::before {
+  content: "";
+  position: absolute;
+  inset: -2px -8px;
+  z-index: -1;
+  border-radius: 6px;
+  background: var(--signal-wash);
+  opacity: 1;
+  transition: opacity 1600ms var(--ease-out-strong) 600ms;
+}
+.is-new[data-seen="true"]::before {
+  opacity: 0;
+}
+
+/* Quiet pulse for "syncing"; a dot that breathes, opacity only. */
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.sync-pulse {
+  animation: sync-pulse 1.4s ease-in-out infinite;
+}
+
+/* Skeleton shimmer: a moving highlight via transform on a pseudo-element. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper-2);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--card-bg) 70%, transparent), transparent);
+  animation: shimmer 1.3s var(--ease-in-out-strong) infinite;
+}
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* Source drawer: CSS transitions so open/close retarget mid-flight. */
+.source-drawer {
+  transform: translateX(calc(100% + 96px));
+  transition: transform 360ms var(--ease-drawer);
+}
+.source-drawer[data-state="open"] {
+  transform: translateX(0);
+}
+.source-drawer-scrim {
+  opacity: 1;
+  transition: opacity 240ms var(--ease-out-strong);
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-pulse,
+  .shimmer::after {
+    animation: none;
+  }
+  .source-drawer {
+    transform: none;
+    opacity: 0;
+    transition: opacity 160ms linear;
+  }
+  .source-drawer[data-state="open"] {
+    opacity: 1;
+  }
+  .is-new::before {
+    transition-duration: 300ms;
+  }
+}
+
+/* ------------------------------------------------------------------------
+   Entrance gating: content that GSAP/Motion will reveal starts hidden only
+   when scripts run and motion is allowed, so there is no flash and no-JS /
+   reduced-motion users see everything immediately.
+   ------------------------------------------------------------------------ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .reveal-root:not(.revealed) [data-reveal] {
+    visibility: hidden;
+  }
+}
+
+/* Sync: values turn back into skeletons while Clio is re-read, then fade in. */
+.sync-skel {
+  position: relative;
+}
+.sync-skel > * {
+  transition: opacity 280ms var(--ease-out-strong);
+}
+.sync-skel::before,
+.sync-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out-strong);
+}
+.sync-skel::before {
+  background: var(--paper-2);
+}
+.sync-skel::after {
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--card-bg) 75%, transparent), transparent);
+  transform: translateX(-100%);
+}
+[data-syncing] .sync-skel {
+  overflow: hidden;
+}
+[data-syncing] .sync-skel > * {
+  opacity: 0;
+}
+[data-syncing] .sync-skel::before {
+  opacity: 1;
+}
+[data-syncing] .sync-skel::after {
+  opacity: 1;
+  animation: shimmer 1.2s var(--ease-in-out-strong) infinite;
+}
+[data-pending] {
+  cursor: progress;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-syncing] .sync-skel::after {
+    animation: none;
+  }
+}
+
+/* Role switch is a server navigation: dim the page while the scoped view loads
+   so the change doesn't teleport. Opacity only; reduced motion keeps it. */
+main.sync-dim {
+  transition: opacity 180ms var(--ease-out-strong);
+}
+.reveal-root:has([data-pending]) main.sync-dim {
+  opacity: 0.55;
+}
+
+/* ------------------------------------------------------------------------
+   Front Page: the base tokens (.opt-a) plus linked highlighting
+   and the pending-surgery orbit.
+   ------------------------------------------------------------------------ */
+.a2-linkable {
+  transition: opacity 200ms var(--ease-out-strong), background-color 200ms var(--ease-out-strong);
+}
+.a2-off {
+  opacity: 0.32;
+}
+.a2-on {
+  background-color: color-mix(in oklab, var(--signal-wash) 70%, transparent);
+  box-shadow: -6px 0 0 color-mix(in oklab, var(--signal-wash) 70%, transparent), 6px 0 0 color-mix(in oklab, var(--signal-wash) 70%, transparent);
+}
+@keyframes a2-orbit {
+  to { transform: rotate(360deg); }
+}
+.a2-orbit {
+  animation: a2-orbit 9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .a2-orbit {
+    animation: none;
+  }
+}
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .reveal-root:not(.revealed) :is(.a2-spine, .a2-ruler) {
+    visibility: hidden;
+  }
+}
+/* The small front-page portrait keeps the photo control as an icon. */
+.a2-portrait .portrait button {
+  font-size: 0;
+  gap: 0;
+  padding-block: 0.3rem;
+}
+
+/* Front Page theme override. The masthead toggle writes data-a2-theme on
+   <html> (restored before paint by the root layout); without it the page
+   follows the system setting. Scoped to .opt-a2 pages. */
+html[data-a2-theme="light"]:has(.opt-a2) {
+  color-scheme: light;
+  --paper: #f1efea;
+  --paper-2: #e8e5dd;
+  --card-bg: #f8f7f3;
+  --ink: #1f2023;
+  --ink-soft: #5e5f63;
+  --line: #d9d5cb;
+  --line-strong: #b4aea1;
+  --signal: #1b4f72;
+  --signal-wash: #dbe5ec;
+  --exposure: #a33b1e;
+  --exposure-wash: #f2ddd4;
+  --caution: #855600;
+  --caution-wash: #f3e6ca;
+  --good: #2e6a3d;
+  --good-wash: #dcead9;
+}
+html[data-a2-theme="dark"]:has(.opt-a2) {
+  color-scheme: dark;
+  --paper: #161719;
+  --paper-2: #1e1f22;
+  --card-bg: #1c1d20;
+  --ink: #edebe5;
+  --ink-soft: #a6a49d;
+  --line: #313237;
+  --line-strong: #4a4b51;
+  --signal: #8fb9da;
+  --signal-wash: #1c2a36;
+  --exposure: #ee8d6d;
+  --exposure-wash: #3a2019;
+  --caution: #e3b55e;
+  --caution-wash: #352813;
+  --good: #8cc79a;
+  --good-wash: #19301f;
+}
+/* A theme switch cross-fades colours instead of snapping. */
+html.a2-theme-switching:has(.opt-a2) *:not(.a2-sun, .a2-moon),
+html.a2-theme-switching:has(.opt-a2) *::before,
+html.a2-theme-switching:has(.opt-a2) *::after {
+  transition: background-color 260ms var(--ease-out-strong), border-color 260ms var(--ease-out-strong), color 260ms var(--ease-out-strong), fill 260ms var(--ease-out-strong), stroke 260ms var(--ease-out-strong) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.a2-theme-switching:has(.opt-a2) * {
+    transition: none !important;
+  }
+}
+/* Client journey: the "you are here" node breathes. Transform + opacity only. */
+@keyframes a2-here {
+  0% { transform: scale(1); opacity: 0.45; }
+  70%, 100% { transform: scale(2.3); opacity: 0; }
+}
+.a2-here-pulse {
+  animation: a2-here 2.4s var(--ease-out-strong) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .a2-here-pulse {
+    animation: none;
+    opacity: 0;
+  }
+}
+/* Theme toggle icon: chosen by CSS so it is right on first paint. */
+.a2-sun,
+.a2-moon {
+  transition: transform 380ms var(--ease-out-strong), opacity 200ms var(--ease-out-strong);
+}
+.a2-moon {
+  opacity: 0;
+  transform: rotate(-70deg) scale(0.5);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-a2-theme="light"]) .a2-sun {
+    opacity: 0;
+    transform: rotate(70deg) scale(0.5);
+  }
+  html:not([data-a2-theme="light"]) .a2-moon {
+    opacity: 1;
+    transform: none;
+  }
+}
+html[data-a2-theme="dark"] .a2-sun {
+  opacity: 0;
+  transform: rotate(70deg) scale(0.5);
+}
+html[data-a2-theme="dark"] .a2-moon {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .a2-sun,
+  .a2-moon {
+    transition: opacity 120ms linear;
+  }
+}
