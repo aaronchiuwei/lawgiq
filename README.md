@@ -40,7 +40,7 @@ npm test                                    # derive + access tests, run against
 
 A visual digest of the matter at `/` (the Front Page), with a Firm, Medical provider and Client view cut by a role-scoped access layer on the server.
 
-- `/` is the firm view; `/?role=provider&provider=<id>` and `/?role=client` are the other roles. Depth dial (Glance / Brief / Full), "Brief me" walkthrough and a light/dark toggle are in the masthead.
+- `/` is the firm view; `/?role=provider&provider=<id>` and `/?role=client` are the other roles. "Brief me" walkthrough and a light/dark toggle are in the masthead.
 - `/p/<token>` is the open-tracked link a provider receives when the attorney shares.
 - `/api/view?role=provider&provider=<id>` returns the exact payload a provider's browser gets. Use it to check the access boundary.
 

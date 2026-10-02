@@ -267,10 +267,9 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
  * The minimized spine for the board: one track from incident to today with
  * the ranked moments as dots (coloured by lane), the limitations date, today
  * and the open question. No activity bars, lanes or minor records; opening
- * the card shows the full CaseSpine and the story. `glance` drops the
- * caption and legend for the one-line Glance depth.
+ * the card shows the full CaseSpine and the story.
  */
-export function CaseSpineSimple({ c, glance = false, className }: { c: CaseFile; glance?: boolean; className?: string }) {
+export function CaseSpineSimple({ c, className }: { c: CaseFile; className?: string }) {
   const { top, shown, btns, activate, onKey, dimmed } = useMoments(c);
   const { open } = useSources();
   const reasonFor = (e: RankedEvent) => c.digest.reasons?.[e.id] ?? e.reason;
@@ -352,33 +351,29 @@ export function CaseSpineSimple({ c, glance = false, className }: { c: CaseFile;
           Today
         </span>
       </div>
-      {glance ? null : (
-        <>
-          <figcaption className="mt-2 flex min-h-[1.5rem] items-baseline gap-2 text-[13px]" aria-live="polite">
-            {shown ? (
-              <>
-                <span className="tnum shrink-0 text-ink-soft">{fmtDate(shown.date)}</span>
-                <span className="truncate text-ink">{shown.title}</span>
-                {reasonFor(shown) ? <span className="hidden shrink-0 text-ink-soft sm:inline">· {reasonFor(shown)}</span> : null}
-              </>
-            ) : null}
-          </figcaption>
-          <p className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-2.5 text-[11.5px] text-ink-soft" aria-hidden>
-            {LANES.map((l) => (
-              <span key={l.id} className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full" style={{ background: l.color }} />
-                {l.label}
-              </span>
-            ))}
-            {openQ ? (
-              <span className="inline-flex items-center gap-1.5 text-exposure">
-                <span className="w-4 border-t-[1.5px] border-dashed border-exposure" />
-                {capitalize(openQ.label)}: open {openQ.openForDays} days
-              </span>
-            ) : null}
-          </p>
-        </>
-      )}
+      <figcaption className="mt-2 flex min-h-[1.5rem] items-baseline gap-2 text-[13px]" aria-live="polite">
+        {shown ? (
+          <>
+            <span className="tnum shrink-0 text-ink-soft">{fmtDate(shown.date)}</span>
+            <span className="truncate text-ink">{shown.title}</span>
+            {reasonFor(shown) ? <span className="hidden shrink-0 text-ink-soft sm:inline">· {reasonFor(shown)}</span> : null}
+          </>
+        ) : null}
+      </figcaption>
+      <p className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-2.5 text-[11.5px] text-ink-soft" aria-hidden>
+        {LANES.map((l) => (
+          <span key={l.id} className="inline-flex items-center gap-1.5">
+            <span className="size-2 rounded-full" style={{ background: l.color }} />
+            {l.label}
+          </span>
+        ))}
+        {openQ ? (
+          <span className="inline-flex items-center gap-1.5 text-exposure">
+            <span className="w-4 border-t-[1.5px] border-dashed border-exposure" />
+            {capitalize(openQ.label)}: open {openQ.openForDays} days
+          </span>
+        ) : null}
+      </p>
     </figure>
   );
 }

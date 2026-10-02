@@ -1,19 +1,19 @@
 "use client";
 
 import { PlayIcon } from "@phosphor-icons/react";
-import { MotionConfig, motion } from "motion/react";
+import { MotionConfig } from "motion/react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FreshnessIndicator, RoleSwitcher, SyncProvider } from "@/components/case/chrome";
 import { SourceProvider } from "@/components/case/sources";
 import type { Freshness, Role } from "@/lib/access";
 import { cn } from "@/lib/utils";
-import { DEPTHS, FrontPageState, useFrontMaybe } from "./state";
+import { FrontPageState, useFrontMaybe } from "./state";
 import { ThemeToggle } from "./theme-toggle";
 
 /**
  * Front Page chrome: a sticky folio line. On the firm view it carries the
- * depth dial (Glance / Brief / Full) and the "since you were here" switch.
+ * "Brief me" walkthrough and the "since you were here" switch.
  * Every role gets the light / dark toggle.
  */
 export function FrontShell({
@@ -71,7 +71,7 @@ export function FrontShell({
 function FirmControls() {
   const front = useFrontMaybe();
   if (!front) return null;
-  const { depth, setDepth, changesOn, toggleChanges, changeIds, setBriefing } = front;
+  const { changesOn, toggleChanges, changeIds, setBriefing } = front;
   return (
     <div className="flex items-center gap-2">
       <button
@@ -83,28 +83,6 @@ function FirmControls() {
         <PlayIcon size={12} weight="fill" aria-hidden />
         <span className="hidden sm:inline">Brief me</span>
       </button>
-      <div role="radiogroup" aria-label="Reading depth" className="relative flex items-center gap-0.5 rounded-full border border-line bg-card-bg p-0.5">
-        {DEPTHS.map((d) => {
-          const on = depth === d.value;
-          return (
-            <button
-              key={d.value}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              title={`${d.hint} (press ${d.value})`}
-              onClick={() => setDepth(d.value)}
-              className={cn("relative h-8 rounded-full px-3 text-[13px] font-medium transition-colors duration-200", on ? "text-paper" : "text-ink-soft hover:text-ink")}
-            >
-              {on ? <motion.span layoutId="a2-depth-pill" className="absolute inset-0 rounded-full bg-ink" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} /> : null}
-              <span className="relative flex items-center gap-1.5">
-                <DepthGlyph depth={d.value} />
-                <span className="hidden sm:inline">{d.label}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
       {changeIds.size ? (
         <button
           type="button"
@@ -121,16 +99,5 @@ function FirmControls() {
         </button>
       ) : null}
     </div>
-  );
-}
-
-/** Three stacked rules: one, two or three lines of detail. */
-function DepthGlyph({ depth }: { depth: number }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden className="shrink-0">
-      <rect x="1" y="1.5" width="10" height="1.6" rx="0.8" fill="currentColor" />
-      <rect x="1" y="5.2" width={depth >= 2 ? 10 : 6} height="1.6" rx="0.8" fill="currentColor" opacity={depth >= 2 ? 1 : 0.3} />
-      <rect x="1" y="8.9" width={depth >= 3 ? 10 : 4} height="1.6" rx="0.8" fill="currentColor" opacity={depth >= 3 ? 1 : 0.3} />
-    </svg>
   );
 }
