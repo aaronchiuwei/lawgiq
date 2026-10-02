@@ -109,6 +109,7 @@ def make_handler(matter, entries):
                 data = f.read_bytes()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/pdf")
+                self.send_header("Content-Disposition", f'inline; filename="{f.name}"')  # show in the iframe, don't download
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 return self.wfile.write(data)

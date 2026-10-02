@@ -55,6 +55,16 @@
   .page summary a { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 12px; }
   .page pre { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; }
   .m-tesseract { color: var(--review); } .m-failed { color: var(--high); }
+  main.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  .viewer iframe { width: 100%; height: calc(100vh - 230px); min-height: 420px; border: 1px solid var(--line); border-radius: 8px; background: #525659; }
+  .pager { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin: 10px 0 8px; }
+  .pager button { font: inherit; font-size: 12px; min-width: 30px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); cursor: pointer; }
+  .pager button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pager button.ocr:not(.on) { border-color: #f0d9ac; }
+  .pager a { margin-left: auto; color: var(--accent); font-size: 12px; text-decoration: none; }
+  details.fold { border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; }
+  details.fold > summary { padding: 8px 10px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  details.fold > div { padding: 0 10px 10px; }
   .empty { color: var(--muted); padding: 30px; text-align: center; }
   .section-h { font-size: 13px; font-weight: 600; margin: 16px 0 8px; color: var(--muted); }
   .note { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
@@ -108,7 +118,7 @@ fetch("/api/entries").then(r => r.json()).then(d => {
 
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
-  view = b.dataset.view; selected = null; render();
+  view = b.dataset.view; selected = null; $("main").classList.remove("wide"); render();
   $("#detail").innerHTML = '<div class="empty">Select an entry.</div>';
 });
 ["#q", "#fType", "#fCat", "#fShare", "#sort"].forEach(s => $(s).oninput = render);
@@ -171,14 +181,8 @@ function listHTML(rows, showScore) {
   }).join("")}</div>`;
 }
 
-async function select(key) {
-  selected = key; render();
-  const e = data.entries.find(x => x.source_type + ":" + x.source_id === key);
-  const att = view === "attorney";
-  let html = `<h2>${esc(e.title)}</h2><div class="meta"><span class="chip">${typeLabel[e.source_type]}</span>
-    <span class="chip">${pretty(e.top_category)}</span>${att ? `<span class="chip ${e.shareable_status}">${e.shareable_status} ${e.shareable_prob.toFixed(2)}</span>` : ""}</div>`;
-  if (att) {
-    html += `<h3>Why this score</h3><div class="kv">
+function scoreHTML(e) {
+  return `<div class="kv">
       <span>Importance</span><span><b>${e.importance_score.toFixed(2)}</b> = 0.75 × impact + 0.25 × urgency</span>
       <span>Impact</span><span>${e.impact_score.toFixed(2)}</span>
       <span>Urgency</span><span>${e.urgency_score.toFixed(2)}</span>
@@ -187,21 +191,58 @@ async function select(key) {
       <h3>Category probabilities</h3>` +
       Object.entries(e.category_probs).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
         `<div class="prob"><span>${pretty(k)}</span><div class="bar"><i style="width:${v * 100}%;background:var(--accent)"></i></div><span>${v.toFixed(2)}</span></div>`).join("");
-  }
-  if (e.source_type === "document") {
-    html += `<h3>Pages</h3><div id="pages" class="note">Loading pages…</div>`;
+}
+
+async function select(key) {
+  selected = key; render();
+  const e = data.entries.find(x => x.source_type + ":" + x.source_id === key);
+  const att = view === "attorney", isDoc = e.source_type === "document";
+  $("main").classList.toggle("wide", isDoc);
+  let html = `<h2>${esc(e.title)}</h2><div class="meta"><span class="chip">${typeLabel[e.source_type]}</span>
+    <span class="chip">${pretty(e.top_category)}</span>${att ? `<span class="chip ${e.shareable_status}">${e.shareable_status} ${e.shareable_prob.toFixed(2)}</span>` : ""}</div>`;
+  if (isDoc) {
+    // The document itself comes first; Jev's reasoning and the extracted text fold away below it.
+    html += `<div class="viewer"><div class="pager" id="pager"></div>
+      <iframe id="pdf" title="${esc(e.title)}" src="/raw/${e.source_id}.pdf#page=1&view=FitH"></iframe></div>`;
+    if (att) html += `<details class="fold"><summary>Why Jev ranked this ${e.importance_score.toFixed(2)}</summary><div>${scoreHTML(e)}</div></details>`;
+    html += `<details class="fold"><summary>Extracted text, page <span id="textPage">1</span></summary><div><pre id="pageText">Loading…</pre></div></details>`;
   } else {
+    if (att) html += `<h3>Why this score</h3>${scoreHTML(e)}`;
     html += `<h3>Text from Clio</h3><pre>${esc(e.text || "(no text)")}</pre>`;
   }
   $("#detail").innerHTML = html;
-  if (e.source_type === "document") {
-    const r = await fetch(`/api/doc/${e.source_id}`);
-    if (!r.ok) { $("#pages").textContent = "No OCR output for this document yet."; return; }
-    const doc = await r.json();
-    $("#pages").outerHTML = doc.pages.map((p, i) => `<details class="page" ${i === 0 ? "open" : ""}>
-      <summary><b>Page ${p.page}</b><span class="m-${p.method}">${pretty(p.method)}</span><span class="meta">${p.char_count} chars</span>
-      <a href="/raw/${e.source_id}.pdf#page=${p.page}" target="_blank" onclick="event.stopPropagation()">open PDF p.${p.page} ↗</a></summary>
-      <pre>${esc(p.text || "(empty)")}</pre></details>`).join("");
+  $("#detail").scrollTop = 0;
+  if (!isDoc) return;
+
+  const r = await fetch(`/api/doc/${e.source_id}`);
+  const pages = r.ok ? (await r.json()).pages : [];
+  const show = n => {
+    const p = pages[n - 1];
+    // A changed query string forces the built-in PDF viewer to jump; a hash-only change is often ignored.
+    $("#pdf").src = `/raw/${e.source_id}.pdf?p=${n}#page=${n}&view=FitH`;
+    document.querySelectorAll("#pager button").forEach(b => b.classList.toggle("on", +b.dataset.p === n));
+    $("#textPage").textContent = n;
+    $("#pageText").textContent = p ? `[${pretty(p.method)} · ${p.char_count} chars]\n\n${p.text || "(empty)"}` : "No extracted text for this page.";
+  };
+  const newTab = `<a href="/raw/${e.source_id}.pdf" target="_blank">open in new tab ↗</a>`;
+  if (pages.length <= 24) {
+    $("#pager").innerHTML = pages.map(p =>
+      `<button data-p="${p.page}" class="${p.method === "tesseract" ? "ocr" : ""}" title="${pretty(p.method)}">${p.page}</button>`).join("") + newTab;
+    document.querySelectorAll("#pager button").forEach(b => b.onclick = () => show(+b.dataset.p));
+  } else {
+    $("#pager").innerHTML = `<button id="prev">‹</button>
+      <input id="pgIn" type="number" min="1" max="${pages.length}" value="1" style="width:64px;font:inherit;padding:2px 6px;border:1px solid var(--line);border-radius:5px">
+      <span class="meta">of ${pages.length}</span><button id="next">›</button>${newTab}`;
+    const go = n => { n = Math.min(pages.length, Math.max(1, n)); $("#pgIn").value = n; show(n); };
+    $("#prev").onclick = () => go(+$("#pgIn").value - 1);
+    $("#next").onclick = () => go(+$("#pgIn").value + 1);
+    $("#pgIn").onchange = () => go(+$("#pgIn").value);
+  }
+  if (pages.length) {
+    document.querySelector('#pager button[data-p="1"]')?.classList.add("on");
+    $("#pageText").textContent = `[${pretty(pages[0].method)} · ${pages[0].char_count} chars]\n\n${pages[0].text || "(empty)"}`;
+  } else {
+    $("#pageText").textContent = "No OCR output for this document yet.";
   }
 }
 </script>
