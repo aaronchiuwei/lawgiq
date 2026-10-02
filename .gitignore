@@ -1,0 +1,10 @@
+# Secrets
+.env
+
+# Local tooling
+.venv/
+__pycache__/
+.DS_Store
+
+# Case documents and extracted text (regenerate with clio_ingest/fetch_documents.py + extract_text.py)
+data/
