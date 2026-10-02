@@ -412,6 +412,7 @@ type BentoCard = CardSpec & { body: (d: Depth) => ReactNode };
  */
 const ROWS: SectionId[][] = [
   ["needs", "story", "changes"],
+  ["tasks"],
   ["injuries", "care", "money"],
   ["liability", "strength"],
 ];
@@ -521,7 +522,7 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "tasks",
       label: "Task board",
       icon: KanbanIcon,
-      span: "md:col-span-6 lg:col-span-12",
+      cols: 12,
       hl: { text: taskBoardHeadline(c), sub: null, figure: `${c.taskBoard.columns.overdue.length} overdue` },
       figure: `${c.taskBoard.columns.overdue.length} overdue · ${c.taskBoard.columns.waiting.length} waiting`,
       body: () => <TaskBoardSection c={c} />,
