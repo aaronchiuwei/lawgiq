@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const view = await getProviderView(parsed.data.providerId);
   if (!view) return NextResponse.json({ error: "Unknown provider" }, { status: 404 });
   const itemCount =
-    view.requests.length + view.questions.length + view.feed.length + view.bills.length + view.records.length + (view.attendance.released ? 1 : 0);
+    view.requests.length + view.questions.length + view.feed.length + view.bills.length + view.records.length + (view.attendance.released ? 1 : 0) + (view.patient.contact ? 1 : 0);
   const share = createShare({
     matterKey: matterKey(),
     providerId: view.provider.id,

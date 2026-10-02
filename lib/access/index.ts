@@ -51,7 +51,14 @@ export function selectFirmView(input: Omit<FirmView, "role">): FirmView {
 
 /* -------------------------------------------------------------- provider -- */
 
-export type ReleasableKind = "request" | "feed" | "bill" | "record" | "question" | "attendance";
+export type ReleasableKind = "contact" | "request" | "feed" | "bill" | "record" | "question" | "attendance";
+
+/** How to reach the patient: the first phone, email and address on their Clio contact. */
+export interface PatientContact {
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+}
 
 export interface DraftItem {
   key: string;
@@ -71,7 +78,8 @@ export interface ProviderView {
   role: "provider";
   freshness: Pick<Freshness, "fetchedAt" | "origin">;
   provider: { id: string; name: string; shortName: string; specialty: string };
-  patient: { name: string; dateOfIncident: string | null };
+  /** `contact` is null when the firm withheld it (or Clio has none). Older share snapshots lack it. */
+  patient: { name: string; dateOfIncident: string | null; contact?: PatientContact | null };
   alive: {
     stage: string | null;
     stagesInOrder: string[];
@@ -97,6 +105,7 @@ export interface ProviderView {
 }
 
 const ATTENDANCE_KEY = "attendance";
+const CONTACT_KEY = "contact";
 
 const daysSince = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 
@@ -154,7 +163,13 @@ function providerCandidates(c: CaseFile, providerId: string) {
     nextScheduled: treatment?.nextScheduled ?? null,
   };
 
-  return { provider, requests, questions, feed, bills, records, attendance };
+  const phone = c.client.phones[0]?.number ?? null;
+  const email = c.client.emails[0]?.address ?? null;
+  const a = c.client.addresses[0];
+  const address = a ? [a.street, a.city, [a.province, a.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null : null;
+  const contact: PatientContact | null = phone || email || address ? { phone, email, address } : null;
+
+  return { provider, contact, requests, questions, feed, bills, records, attendance };
 }
 
 function isIncluded(vis: ProviderVisibility, key: string): boolean {
@@ -170,6 +185,9 @@ export function selectProviderDraft(c: CaseFile, providerId: string, vis: Provid
     providerName: cand.provider.name,
     showCoverageAmount: vis.showCoverageAmount,
     items: [
+      ...(cand.contact
+        ? [item(CONTACT_KEY, "contact", `Patient contact: ${[cand.contact.phone && "phone", cand.contact.email && "email", cand.contact.address && "address"].filter(Boolean).join(", ")}`)]
+        : []),
       item(ATTENDANCE_KEY, "attendance", `Attendance: ${cand.attendance.points.length} dated ${cand.attendance.points.length === 1 ? "record" : "records"}, ${cand.attendance.gaps.length} ${cand.attendance.gaps.length === 1 ? "gap" : "gaps"}`),
       ...cand.requests.map((r) => item(r.key, "request", r.title)),
       ...cand.questions.map((q) => item(q.key, "question", q.text)),
@@ -193,7 +211,7 @@ export function selectProviderView(c: CaseFile, providerId: string, vis: Provide
     role: "provider",
     freshness: { fetchedAt: c.fetchedAt, origin: c.origin },
     provider: { id: cand.provider.id, name: cand.provider.name, shortName: cand.provider.shortName, specialty: cand.provider.specialty },
-    patient: { name: c.client.name, dateOfIncident: c.matter.dateOfIncident?.value ?? null },
+    patient: { name: c.client.name, dateOfIncident: c.matter.dateOfIncident?.value ?? null, contact: cand.contact && isIncluded(vis, CONTACT_KEY) ? cand.contact : null },
     alive: {
       stage: c.matter.stage,
       stagesInOrder: c.matter.stagesInOrder,

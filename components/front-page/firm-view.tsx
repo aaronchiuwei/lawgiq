@@ -9,10 +9,12 @@ import {
   BellSimpleIcon,
   CaretDownIcon,
   CheckCircleIcon,
+  EnvelopeSimpleIcon,
   ClockCountdownIcon,
   GaugeIcon,
   HourglassMediumIcon,
   ListChecksIcon,
+  MapPinIcon,
   PathIcon,
   PersonIcon,
   PhoneIcon,
@@ -178,8 +180,52 @@ function ClientCard({ view }: { view: FirmView }) {
           )}
         </div>
         <StageTrack stages={c.matter.stagesInOrder} current={c.matter.stage} className="mt-2 max-w-[17rem]" />
+        <ClientContact client={c.client} />
       </div>
     </section>
+  );
+}
+
+/** How to reach the client: the first phone, email and address on their Clio contact. */
+function ClientContact({ client }: { client: FirmView["case"]["client"] }) {
+  const phone = client.phones[0];
+  const email = client.emails[0];
+  const addr = client.addresses[0];
+  const place = addr ? [addr.street, addr.city, [addr.province, addr.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ") : null;
+  const link = "truncate text-ink underline decoration-line-strong decoration-dotted underline-offset-4 transition-colors hover:decoration-ink";
+  if (!phone && !email && !place) return <p className="mt-2.5 border-t border-line pt-2 text-[12.5px] text-ink-soft">No contact details in Clio.</p>;
+  return (
+    <address className="mt-2.5 flex flex-col gap-1 border-t border-line pt-2 text-[12.5px] not-italic text-ink-soft">
+      <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        {phone ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <PhoneIcon size={13} className="shrink-0" aria-hidden />
+            <a href={`tel:${phone.number.replace(/[^\d+]/g, "")}`} className={cn(link, "tnum")} aria-label={`Call ${client.name}, ${phone.name.toLowerCase()} phone`}>
+              {phone.number}
+            </a>
+          </span>
+        ) : null}
+        {email ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <EnvelopeSimpleIcon size={13} className="shrink-0" aria-hidden />
+            <a href={`mailto:${email.address}`} className={link} aria-label={`Email ${client.name}`}>
+              {email.address}
+            </a>
+          </span>
+        ) : null}
+      </span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        {place ? (
+          <>
+            <MapPinIcon size={13} className="shrink-0" aria-hidden />
+            <span className="truncate" title={place}>
+              {place}
+            </span>
+          </>
+        ) : null}
+        <SourceChip sources={client.source} variant="icon" className="ml-auto size-5 shrink-0" />
+      </span>
+    </address>
   );
 }
 
