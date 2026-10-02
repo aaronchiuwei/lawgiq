@@ -1,27 +1,20 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /**
  * Front Page state, shared by the masthead and the page:
- * - depth: how much of every section shows (1 glance, 2 brief, 3 full).
  * - link: linked highlighting. Hovering a provider, an event or turning on
  *   "since you were here" lights every matching element on the page and dims
  *   the rest of that element's group.
  */
 
-export type Depth = 1 | 2 | 3;
-export const DEPTHS: { value: Depth; label: string; hint: string }[] = [
-  { value: 1, label: "Glance", hint: "One line per section" },
-  { value: 2, label: "Brief", hint: "Headline, picture, three facts" },
-  { value: 3, label: "Full", hint: "Everything on file" },
-];
+/** How much of a section shows: 2 on the board (brief), 3 when its card is expanded (full). */
+export type Depth = 2 | 3;
 
 type Link = { providers: string[]; events: string[]; source: "hover" | "changes" } | null;
 
 type Ctx = {
-  depth: Depth;
-  setDepth: (d: Depth) => void;
   link: Link;
   setLink: (l: Link) => void;
   changesOn: boolean;
@@ -44,70 +37,32 @@ export function useFrontMaybe() {
   return useContext(FrontCtx);
 }
 
-const KEY = "lawgiq.a2.depth";
-
 export function FrontPageState({ children, changeIds }: { children: ReactNode; changeIds: string[] }) {
-  const [depth, setDepthRaw] = useState<Depth>(2);
   const [link, setLink] = useState<Link>(null);
   const [changesOn, setChangesOn] = useState(false);
   const [briefing, setBriefing] = useState(false);
-  const anchor = useRef<{ el: Element; top: number } | null>(null);
   const ids = useMemo(() => new Set(changeIds), [changeIds]);
-
-  // Restore the reader's last depth (a per-viewer convenience only).
-  useEffect(() => {
-    try {
-      const v = Number(localStorage.getItem(KEY));
-      if (v === 1 || v === 3) queueMicrotask(() => setDepthRaw(v));
-    } catch {
-      /* storage unavailable: keep the default */
-    }
-  }, []);
-
-  // Changing depth reflows the page. Keep the section you're reading pinned
-  // where it was, so the page grows and shrinks around you, not under you.
-  const setDepth = useCallback((d: Depth) => {
-    const head = 120;
-    const sections = [...document.querySelectorAll("[data-section]")];
-    const el = sections.find((s) => s.getBoundingClientRect().bottom > head) ?? null;
-    anchor.current = el && window.scrollY > 40 ? { el, top: el.getBoundingClientRect().top } : null;
-    setDepthRaw(d);
-    try {
-      localStorage.setItem(KEY, String(d));
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useLayoutEffect(() => {
-    const a = anchor.current;
-    if (!a) return;
-    anchor.current = null;
-    const delta = a.el.getBoundingClientRect().top - a.top;
-    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: "instant" as ScrollBehavior });
-  }, [depth]);
 
   const toggleChanges = useCallback(() => setChangesOn((v) => !v), []);
 
-  // Keyboard: 1/2/3 depth, n for "since you were here". Never while typing.
+  // Keyboard: b for the briefing, n for "since you were here". Never while typing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || briefing) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       if (e.key === "b") setBriefing(true);
-      else if (e.key === "1" || e.key === "2" || e.key === "3") setDepth(Number(e.key) as Depth);
       else if (e.key === "n") toggleChanges();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setDepth, toggleChanges, briefing]);
+  }, [toggleChanges, briefing]);
 
   const effectiveLink: Link = useMemo(() => link ?? (changesOn ? { providers: [], events: changeIds, source: "changes" } : null), [link, changesOn, changeIds]);
 
   const value = useMemo(
-    () => ({ depth, setDepth, link: effectiveLink, setLink, changesOn, toggleChanges, changeIds: ids, briefing, setBriefing }),
-    [depth, setDepth, effectiveLink, changesOn, toggleChanges, ids, briefing],
+    () => ({ link: effectiveLink, setLink, changesOn, toggleChanges, changeIds: ids, briefing, setBriefing }),
+    [effectiveLink, changesOn, toggleChanges, ids, briefing],
   );
   return <FrontCtx.Provider value={value}>{children}</FrontCtx.Provider>;
 }

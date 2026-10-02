@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
  */
 
 const KIND_TITLE: Record<DraftItem["kind"], string> = {
+  contact: "Patient contact",
   attendance: "Attendance",
   request: "What the firm needs",
   question: "Open questions",
@@ -23,7 +24,7 @@ const KIND_TITLE: Record<DraftItem["kind"], string> = {
   record: "Their records",
   feed: "Status updates",
 };
-const ORDER: DraftItem["kind"][] = ["attendance", "request", "question", "bill", "record", "feed"];
+const ORDER: DraftItem["kind"][] = ["contact", "attendance", "request", "question", "bill", "record", "feed"];
 
 export function ShareEditor({
   drafts,

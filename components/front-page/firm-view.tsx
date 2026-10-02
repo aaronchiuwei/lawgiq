@@ -3,16 +3,19 @@
 import { useGSAP } from "@gsap/react";
 import {
   ArrowDownIcon,
+  ArrowsInSimpleIcon,
   ArrowsOutSimpleIcon,
   ArrowUpIcon,
   BellSimpleIcon,
   CaretDownIcon,
   CheckCircleIcon,
+  EnvelopeSimpleIcon,
   ClockCountdownIcon,
   GaugeIcon,
   HourglassMediumIcon,
   KanbanIcon,
   ListChecksIcon,
+  MapPinIcon,
   PathIcon,
   PersonIcon,
   PhoneIcon,
@@ -22,12 +25,11 @@ import {
   StethoscopeIcon,
   WarningCircleIcon,
   WarningDiamondIcon,
-  XIcon,
   type Icon,
 } from "@phosphor-icons/react";
 import gsap from "gsap";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CountUp, DerivedNote, GeneratedLine, Portrait } from "@/components/case/atoms";
 import { ConflictFlag, LastVisitDemo, ThresholdStepper } from "@/components/case/controls";
@@ -56,12 +58,11 @@ gsap.registerPlugin(useGSAP);
  * KPIs, then a bento of labelled cards (needs you, timeline, what changed,
  * injuries, care, specials, liability, strength). Every card answers its
  * question in its first line, carries its key figure in the header, and
- * expands in place to full detail. The depth dial sets every card at once
- * (Glance: headlines only; Brief: compact; Full: everything).
+ * expands in place, to the board's full width, for full detail.
  *
  * Motion: GSAP for the composed entrance (cards arrive in reading order, the
  * ruler and the spine draw themselves). Motion for the bento reflow when a
- * card expands or the depth changes, because those are layout transitions
+ * card expands or collapses, because those are layout transitions
  * that must stay interruptible.
  */
 
@@ -182,8 +183,52 @@ function ClientCard({ view }: { view: FirmView }) {
           )}
         </div>
         <StageTrack stages={c.matter.stagesInOrder} current={c.matter.stage} className="mt-2 max-w-[17rem]" />
+        <ClientContact client={c.client} />
       </div>
     </section>
+  );
+}
+
+/** How to reach the client: the first phone, email and address on their Clio contact. */
+function ClientContact({ client }: { client: FirmView["case"]["client"] }) {
+  const phone = client.phones[0];
+  const email = client.emails[0];
+  const addr = client.addresses[0];
+  const place = addr ? [addr.street, addr.city, [addr.province, addr.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ") : null;
+  const link = "truncate text-ink underline decoration-line-strong decoration-dotted underline-offset-4 transition-colors hover:decoration-ink";
+  if (!phone && !email && !place) return <p className="mt-2.5 border-t border-line pt-2 text-[12.5px] text-ink-soft">No contact details in Clio.</p>;
+  return (
+    <address className="mt-2.5 flex flex-col gap-1 border-t border-line pt-2 text-[12.5px] not-italic text-ink-soft">
+      <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        {phone ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <PhoneIcon size={13} className="shrink-0" aria-hidden />
+            <a href={`tel:${phone.number.replace(/[^\d+]/g, "")}`} className={cn(link, "tnum")} aria-label={`Call ${client.name}, ${phone.name.toLowerCase()} phone`}>
+              {phone.number}
+            </a>
+          </span>
+        ) : null}
+        {email ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <EnvelopeSimpleIcon size={13} className="shrink-0" aria-hidden />
+            <a href={`mailto:${email.address}`} className={link} aria-label={`Email ${client.name}`}>
+              {email.address}
+            </a>
+          </span>
+        ) : null}
+      </span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        {place ? (
+          <>
+            <MapPinIcon size={13} className="shrink-0" aria-hidden />
+            <span className="truncate" title={place}>
+              {place}
+            </span>
+          </>
+        ) : null}
+        <SourceChip sources={client.source} variant="icon" className="ml-auto size-5 shrink-0" />
+      </span>
+    </address>
   );
 }
 
@@ -356,23 +401,74 @@ function Kpi({ label, children, className, source, tone, extra }: { label: strin
 
 /* ================================================================ bento == */
 
-type CardSpec = { id: SectionId; label: string; icon: Icon; span: string; hl: Headline; figure?: ReactNode; flag?: ReactNode; brief?: string; /** Shown under the headline at Glance, where the body is hidden. */ glance?: ReactNode };
+/** `cols` is the card's width on the 12-column board when nothing in its row is expanded. */
+type CardSpec = { id: SectionId; label: string; icon: Icon; cols: number; hl: Headline; figure?: ReactNode; flag?: ReactNode; brief?: string };
+type BentoCard = CardSpec & { body: (d: Depth) => ReactNode };
+
+/**
+ * The board's rows. The first is Needs (two rows tall) beside the timeline
+ * and what changed; the others are plain rows. An expanded card stays at its
+ * row's level, takes the full width, and pushes the rest of its row below it.
+ */
+const ROWS: SectionId[][] = [
+  ["needs", "story", "changes"],
+  ["injuries", "care", "money"],
+  ["liability", "strength"],
+];
+
+// Literal class names so Tailwind generates them.
+const LG_COLS = ["", "lg:col-span-1", "lg:col-span-2", "lg:col-span-3", "lg:col-span-4", "lg:col-span-5", "lg:col-span-6", "lg:col-span-7", "lg:col-span-8", "lg:col-span-9", "lg:col-span-10", "lg:col-span-11", "lg:col-span-12"];
+
+/** Shares 12 columns among cards in proportion to their usual widths (largest remainder). */
+function apportion(widths: number[]): number[] {
+  const total = widths.reduce((a, b) => a + b, 0);
+  const exact = widths.map((w) => (w * 12) / total);
+  const out = exact.map(Math.floor);
+  const order = exact.map((x, i) => [x - Math.floor(x), i] as const).sort((a, b) => b[0] - a[0]);
+  for (let k = 0; k < 12 - out.reduce((a, b) => a + b, 0); k++) out[order[k][1]]++;
+  return out;
+}
+
+/** Each card in board order, with its grid classes for the current expansions. */
+function layoutBoard(cards: BentoCard[], open: ReadonlySet<SectionId>): { card: BentoCard; cls: string }[] {
+  const byId = new Map(cards.map((x) => [x.id, x]));
+  const cls = (cols: number, tall = false) => cn("md:col-span-6", LG_COLS[cols], tall && "lg:row-span-2");
+  return ROWS.flatMap((row, r) => {
+    const opened = row.filter((id) => open.has(id)).map((id) => ({ card: byId.get(id)!, cls: cls(12) }));
+    const rest = row.filter((id) => !open.has(id)).map((id) => byId.get(id)!);
+    if (r === 0) {
+      // Needs sits beside whatever is left of the stack; the stack takes the rest of the width.
+      const stack = rest.filter((x) => x.id !== "needs");
+      const needs = rest.find((x) => x.id === "needs");
+      const laid = rest.map((x) => (x === needs ? { card: x, cls: cls(stack.length ? x.cols : 12, stack.length === 2) } : { card: x, cls: cls(needs ? 12 - needs.cols : 12) }));
+      return [...opened, ...laid];
+    }
+    const cols = apportion(rest.map((x) => x.cols));
+    return [...opened, ...rest.map((x, i) => ({ card: x, cls: cls(cols[i]) }))];
+  });
+}
 
 function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
   const c = view.case;
-  const { depth } = useFront();
-  // One card at a time opens as a focus panel over the board; its slot keeps
-  // its place, so the board never reshuffles under you.
-  const [openId, setOpenId] = useState<SectionId | null>(null);
+  // Any card expands in place to full width and full detail, at its row's
+  // level; the rest of its row moves below it.
+  const [openIds, setOpenIds] = useState<ReadonlySet<SectionId>>(() => new Set());
+  const toggle = (id: SectionId) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const storyConflicts = c.conflicts.filter((x) => c.events.some((e) => e.id === x.anchor && e.kind !== "task"));
   const changes = c.changes.items.length;
-  const cards: (CardSpec & { body: (d: Depth) => ReactNode })[] = [
+  const cards: BentoCard[] = [
     {
       id: "needs",
       label: "Needs you",
       icon: ListChecksIcon,
-      span: "md:col-span-6 lg:col-span-3 lg:row-span-2",
+      cols: 3,
       hl: h.needs,
       figure: `${c.tasks.overdue.length} overdue`,
       brief: "needs",
@@ -382,12 +478,11 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "story",
       label: "Case timeline",
       icon: PathIcon,
-      span: "md:col-span-6 lg:col-span-9",
+      cols: 9,
       hl: h.story,
       figure: `${c.topEvents.length} moments`,
       flag: storyConflicts.length ? <ConflictCount items={storyConflicts} /> : null,
-      glance: <CaseSpineSimple c={c} glance className="mt-3" />,
-      // On the board: the simple spine. Opened in full (or at Full depth): every lane and the story.
+      // On the board: the simple spine. Expanded: every lane and the story.
       body: (d) =>
         d === 3 ? (
           <div>
@@ -409,7 +504,7 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "changes",
       label: "What changed",
       icon: BellSimpleIcon,
-      span: "md:col-span-6 lg:col-span-9",
+      cols: 9,
       hl: {
         text: !changes
           ? `Nothing new in Clio since ${fmtDate(c.changes.since, { year: false })}.`
@@ -435,16 +530,16 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "injuries",
       label: "Injuries",
       icon: PersonIcon,
-      span: "md:col-span-6 lg:col-span-4",
+      cols: 4,
       hl: h.injuries,
       figure: h.injuries.figure,
-      body: (d) => <BodyMap c={c} depth={d as 1 | 2 | 3} compact={d < 3} />,
+      body: (d) => <BodyMap c={c} depth={d} compact={d < 3} />,
     },
     {
       id: "care",
       label: "Care and attendance",
       icon: StethoscopeIcon,
-      span: "md:col-span-6 lg:col-span-5",
+      cols: 5,
       hl: h.care,
       figure: h.care.figure,
       body: (d) => (
@@ -457,7 +552,7 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "money",
       label: "Medical specials",
       icon: ReceiptIcon,
-      span: "md:col-span-6 lg:col-span-3",
+      cols: 3,
       hl: h.specials,
       figure: h.specials.figure,
       body: (d) => (
@@ -480,7 +575,7 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "liability",
       label: "Liability",
       icon: ScalesIcon,
-      span: "md:col-span-6 lg:col-span-7",
+      cols: 7,
       hl: h.liability,
       figure: h.liability.figure,
       body: (d) => <Liability c={c} depth={d} />,
@@ -489,61 +584,66 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       id: "strength",
       label: "Case strength",
       icon: GaugeIcon,
-      span: "md:col-span-6 lg:col-span-5",
+      cols: 5,
       hl: h.strength,
       figure: `${c.scorecard.total}/100`,
       body: (d) => <Strength c={c} depth={d} weakest={h.strength.weakest?.id ?? null} />,
     },
   ];
 
-  const open = cards.find((x) => x.id === openId) ?? null;
   return (
-    <>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-6 lg:grid-cols-12">
-        {cards.map(({ body, ...spec }) =>
-          spec.id === openId ? (
-            <div key={spec.id} id={spec.id} data-section className={cn("rounded-[10px] border border-dashed border-line-strong", spec.span)} aria-hidden />
-          ) : (
-            <Card key={spec.id} spec={spec} depth={depth} onOpen={() => setOpenId(spec.id)}>
-              {body(depth)}
-            </Card>
-          ),
-        )}
-      </div>
-      <AnimatePresence>{open ? <FocusPanel key={open.id} spec={open} onClose={() => setOpenId(null)}>{open.body(3)}</FocusPanel> : null}</AnimatePresence>
-    </>
+    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-6 lg:grid-cols-12">
+      {layoutBoard(cards, openIds).map(({ card: { body, ...spec }, cls }) => {
+        const open = openIds.has(spec.id);
+        return (
+          <Card key={spec.id} spec={spec} span={cls} open={open} onToggle={() => toggle(spec.id)}>
+            {body(open ? 3 : 2)}
+          </Card>
+        );
+      })}
+    </div>
   );
 }
 
-function CardHeader({ spec, open, onToggle, buttonRef }: { spec: CardSpec; open: boolean; onToggle: () => void; buttonRef?: Ref<HTMLButtonElement> }) {
+function CardHeader({ spec, open, onToggle }: { spec: CardSpec; open: boolean; onToggle: () => void }) {
   const Icon = spec.icon;
   return (
     <header className="flex items-center gap-2 border-b border-line px-4 py-2.5">
       <Icon size={15} className="shrink-0 text-ink-soft" aria-hidden />
-      <h2 id={`${spec.id}-h${open ? "-focus" : ""}`} className={cn(LABEL, "text-ink")}>
+      <h2 id={`${spec.id}-h`} className={cn(LABEL, "text-ink")}>
         {spec.label}
       </h2>
       {spec.flag}
       <span className="tnum ml-auto truncate text-[13px] text-ink-soft">{spec.figure}</span>
       <button
-        ref={buttonRef}
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        aria-label={open ? `Close ${spec.label}` : `Open ${spec.label} in full`}
-        title={open ? "Close (Esc)" : "Open in full"}
+        aria-controls={`${spec.id}-body`}
+        aria-label={open ? `Collapse ${spec.label}` : `Expand ${spec.label}`}
+        title={open ? "Collapse" : "Expand"}
         className="-mr-1.5 grid size-7 shrink-0 place-items-center rounded-full text-ink-soft transition-[background-color,color,transform] duration-150 hover:bg-paper-2 hover:text-ink active:scale-[0.92]"
       >
-        {open ? <XIcon size={15} aria-hidden /> : <ArrowsOutSimpleIcon size={15} aria-hidden />}
+        {open ? <ArrowsInSimpleIcon size={15} aria-hidden /> : <ArrowsOutSimpleIcon size={15} aria-hidden />}
       </button>
     </header>
   );
 }
 
-function Card({ spec, depth, onOpen, children }: { spec: CardSpec; depth: Depth; onOpen: () => void; children: ReactNode }) {
+function Card({ spec, span, open, onToggle, children }: { spec: CardSpec; span: string; open: boolean; onToggle: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  // Expanding reflows the board; bring the card's head into view once it settles.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r && (r.top < 80 || r.top > window.innerHeight * 0.6)) ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 320);
+    return () => window.clearTimeout(t);
+  }, [open]);
   return (
     <motion.section
-      layoutId={`a2-card-${spec.id}`}
+      ref={ref}
       layout
       transition={{ type: "spring", duration: 0.5, bounce: 0.08 }}
       id={spec.id}
@@ -551,90 +651,27 @@ function Card({ spec, depth, onOpen, children }: { spec: CardSpec; depth: Depth;
       data-reveal="card"
       data-brief={spec.brief}
       aria-labelledby={`${spec.id}-h`}
-      className={cn(BOX, "a2-card flex min-w-0 scroll-mt-32 flex-col overflow-hidden", spec.span)}
+      className={cn(BOX, "a2-card flex min-w-0 scroll-mt-32 flex-col overflow-hidden", span, open && "border-line-strong")}
     >
       <motion.div layout="position" data-card-inner className="flex flex-1 flex-col">
-        <CardHeader spec={spec} open={false} onToggle={onOpen} />
-        <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
-          <p className="font-[family-name:var(--font-display)] text-[1.08rem] leading-snug tracking-[-0.005em] text-ink">{spec.hl.text}</p>
+        <CardHeader spec={spec} open={open} onToggle={onToggle} />
+        <div id={`${spec.id}-body`} className={cn("flex flex-1 flex-col", open ? "px-5 pb-6 pt-4 sm:px-6" : "px-4 pb-4 pt-3")}>
+          <p className={cn("font-[family-name:var(--font-display)] leading-snug text-ink", open ? "text-[1.5rem] tracking-[-0.01em]" : "text-[1.08rem] tracking-[-0.005em]")}>{spec.hl.text}</p>
+          {open && spec.hl.sub ? <p className="mt-1 max-w-[56rem] text-[14px] leading-relaxed text-ink-soft">{spec.hl.sub}</p> : null}
           <AnimatePresence initial={false} mode="popLayout">
-            {depth > 1 ? (
-              <motion.div
-                key={`d${depth}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE, delay: 0.06 } }}
-                exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                className="mt-3 flex min-w-0 flex-1 flex-col"
-              >
-                {children}
-              </motion.div>
-            ) : spec.glance ? (
-              <motion.div
-                key="glance"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { duration: 0.3, ease: EASE, delay: 0.06 } }}
-                exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                className="min-w-0"
-              >
-                {spec.glance}
-              </motion.div>
-            ) : null}
+            <motion.div
+              key={open ? "full" : "brief"}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE, delay: 0.06 } }}
+              exit={{ opacity: 0, transition: { duration: 0.1 } }}
+              className={cn("flex min-w-0 flex-1 flex-col", open ? "mt-5" : "mt-3")}
+            >
+              {children}
+            </motion.div>
           </AnimatePresence>
         </div>
       </motion.div>
     </motion.section>
-  );
-}
-
-/** A card opened in full: it grows out of its slot into a panel over the board. */
-function FocusPanel({ spec, onClose, children }: { spec: CardSpec; onClose: () => void; children: ReactNode }) {
-  const closeBtn = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const back = document.activeElement as HTMLElement | null;
-    closeBtn.current?.focus({ preventScroll: true });
-    const html = document.documentElement;
-    const prev = html.style.overflow;
-    html.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      // The source drawer handles its own Esc first.
-      if (e.key === "Escape" && !document.querySelector(".source-drawer[data-state='open']")) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      html.style.overflow = prev;
-      back?.focus?.({ preventScroll: true });
-    };
-  }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-3 pb-6 pt-[4.5rem] sm:px-6">
-      <motion.div
-        aria-hidden
-        onClick={onClose}
-        className="fixed inset-0 bg-[color-mix(in_oklab,var(--ink)_32%,transparent)] backdrop-blur-[2px]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
-      />
-      <motion.section
-        layoutId={`a2-card-${spec.id}`}
-        transition={{ type: "spring", duration: 0.5, bounce: 0.08 }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${spec.id}-h-focus`}
-        className={cn(BOX, "relative w-full max-w-[76rem] overflow-hidden border-line-strong shadow-[0_32px_80px_-20px_color-mix(in_oklab,var(--ink)_40%,transparent)]")}
-      >
-        <motion.div layout="position">
-          <CardHeader spec={spec} open onToggle={onClose} buttonRef={closeBtn} />
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.12, duration: 0.25 } }} exit={{ opacity: 0, transition: { duration: 0.08 } }} className="px-5 pb-6 pt-4 sm:px-6">
-            <p className="font-[family-name:var(--font-display)] text-[1.5rem] leading-snug tracking-[-0.01em] text-ink">{spec.hl.text}</p>
-            {spec.hl.sub ? <p className="mt-1 max-w-[56rem] text-[14px] leading-relaxed text-ink-soft">{spec.hl.sub}</p> : null}
-            <div className="mt-5">{children}</div>
-          </motion.div>
-        </motion.div>
-      </motion.section>
-    </div>
   );
 }
 
@@ -1252,7 +1289,6 @@ function SpecialsLine({ c, l, max, uncertain }: { c: CaseFile; l: NonNullable<Ca
 }
 
 function MoneyMargin({ c }: { c: CaseFile }) {
-  const { depth } = useFront();
   const k = c.kpis;
   return (
     <div className="flex flex-col gap-4">
@@ -1264,32 +1300,30 @@ function MoneyMargin({ c }: { c: CaseFile }) {
         </p>
         <p>{k.firmSpend.count} expense entries</p>
       </div>
-      {depth === 3 ? (
-        <ul className="flex flex-col gap-1 border-t border-line pt-3">
-          {k.coverage.lines.map((l) => (
-            <li key={l.label} className="flex justify-between gap-3">
-              <span>{l.label}</span>
-              <span className="tnum text-ink">
-                {l.perPerson !== null ? fmtUsd(l.perPerson, { compact: true }) : "?"}
-                {l.perOccurrence ? ` / ${fmtUsd(l.perOccurrence, { compact: true })}` : ""}
-                {k.noFault && /no-fault/i.test(l.label) && k.noFault.exhausted ? " · used up" : ""}
-              </span>
-            </li>
-          ))}
-          {k.liens.map((l) => (
-            <li key={l.holder} className="flex justify-between gap-3">
-              <span>{l.holder.replace(/^New York State /, "")} lien</span>
-              <span className="tnum text-ink">{l.amount ? fmtUsd(l.amount) : "Amount unknown"}</span>
-            </li>
-          ))}
-          {k.coverage.claimNumber ? (
-            <li className="mt-1 flex items-center gap-1">
-              Claim <span className="tnum text-ink">{k.coverage.claimNumber.value.split(" ")[0]}</span>
-              <SourceChip sources={k.coverage.claimNumber.source} variant="icon" className="size-5" />
-            </li>
-          ) : null}
-        </ul>
-      ) : null}
+      <ul className="flex flex-col gap-1 border-t border-line pt-3">
+        {k.coverage.lines.map((l) => (
+          <li key={l.label} className="flex justify-between gap-3">
+            <span>{l.label}</span>
+            <span className="tnum text-ink">
+              {l.perPerson !== null ? fmtUsd(l.perPerson, { compact: true }) : "?"}
+              {l.perOccurrence ? ` / ${fmtUsd(l.perOccurrence, { compact: true })}` : ""}
+              {k.noFault && /no-fault/i.test(l.label) && k.noFault.exhausted ? " · used up" : ""}
+            </span>
+          </li>
+        ))}
+        {k.liens.map((l) => (
+          <li key={l.holder} className="flex justify-between gap-3">
+            <span>{l.holder.replace(/^New York State /, "")} lien</span>
+            <span className="tnum text-ink">{l.amount ? fmtUsd(l.amount) : "Amount unknown"}</span>
+          </li>
+        ))}
+        {k.coverage.claimNumber ? (
+          <li className="mt-1 flex items-center gap-1">
+            Claim <span className="tnum text-ink">{k.coverage.claimNumber.value.split(" ")[0]}</span>
+            <SourceChip sources={k.coverage.claimNumber.source} variant="icon" className="size-5" />
+          </li>
+        ) : null}
+      </ul>
     </div>
   );
 }

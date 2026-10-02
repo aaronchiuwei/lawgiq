@@ -1,7 +1,7 @@
 "use client";
 
 import { useGSAP } from "@gsap/react";
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ClockCountdownIcon, LockSimpleIcon, QuestionIcon, TrayArrowDownIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ClockCountdownIcon, EnvelopeSimpleIcon, LockSimpleIcon, MapPinIcon, PhoneIcon, QuestionIcon, TrayArrowDownIcon, XIcon } from "@phosphor-icons/react";
 import gsap from "gsap";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef, useState, type ReactNode } from "react";
@@ -116,6 +116,7 @@ export function FrontPageProvider({ view, shared }: { view: ProviderView; shared
           <Attendance view={view} today={today} />
         </div>
         <div className="flex flex-col gap-12">
+          {view.patient.contact ? <Contact name={view.patient.name} contact={view.patient.contact} /> : null}
           <Updates view={view} />
           <Ledger view={view} />
         </div>
@@ -371,6 +372,42 @@ function Attendance({ view, today }: { view: ProviderView; today: string }) {
         usually mean records the firm hasn&apos;t received yet.
       </p>
       <AttendanceStrip className="mt-5" points={att.points} gaps={att.gaps} today={today} legend />
+    </section>
+  );
+}
+
+/** The patient's phone, email and address, when the firm released them. */
+function Contact({ name, contact }: { name: string; contact: NonNullable<ProviderView["patient"]["contact"]> }) {
+  const link = "text-ink underline decoration-line-strong decoration-dotted underline-offset-4 transition-colors hover:decoration-ink";
+  return (
+    <section data-reveal="below" aria-labelledby="contact-h">
+      <h2 id="contact-h" className={H2}>
+        Patient contact
+      </h2>
+      <address className="mt-4 flex flex-col gap-2.5 text-[14.5px] not-italic leading-snug text-ink-soft">
+        {contact.phone ? (
+          <span className="flex min-w-0 items-center gap-2.5">
+            <PhoneIcon size={15} className="shrink-0" aria-hidden />
+            <a href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`} className={cn(link, "tnum")} aria-label={`Call ${name}`}>
+              {contact.phone}
+            </a>
+          </span>
+        ) : null}
+        {contact.email ? (
+          <span className="flex min-w-0 items-center gap-2.5">
+            <EnvelopeSimpleIcon size={15} className="shrink-0" aria-hidden />
+            <a href={`mailto:${contact.email}`} className={cn(link, "truncate")} aria-label={`Email ${name}`}>
+              {contact.email}
+            </a>
+          </span>
+        ) : null}
+        {contact.address ? (
+          <span className="flex min-w-0 items-start gap-2.5">
+            <MapPinIcon size={15} className="mt-0.5 shrink-0" aria-hidden />
+            <span className="text-ink">{contact.address}</span>
+          </span>
+        ) : null}
+      </address>
     </section>
   );
 }
