@@ -1,5 +1,7 @@
 # Decisions
 
+> **Current state:** Front Page (formerly Option A2) is the only UI and is served at `/`. Options A (Briefing), B (Story) and C (Command) and the comparison landing page have been removed; old `/option-*` URLs redirect to `/`. The notes below are kept as the design record.
+
 Three prototypes of one product: a visual digest of a personal-injury case file, read from Clio Manage, for the attorney, the treating provider and the client. They share one data layer and one access layer and differ in layout, navigation and motion.
 
 ## Recommendation for the demo video
@@ -16,7 +18,7 @@ Command is the best working tool for an attorney who already knows the case. It 
 
 ## Option A2: Front Page (built after review, now the recommendation)
 
-Briefing tested best, but it still asked the reader to take in too much at once: about 5,100px and nine sections, all fully open. Front Page (`/option-a2`) keeps Briefing's editorial voice and tokens and changes how the information is delivered.
+Briefing tested best, but it still asked the reader to take in too much at once: about 5,100px and nine sections, all fully open. Front Page (now `/`) keeps Briefing's editorial voice and tokens and changes how the information is delivered.
 
 - **One screen for the 90-second read.** At 1440×900 the front page holds the identity line, a money headline ("Worth $375,000. Covered for $100,000. / $275,000 sits above the coverage."), a money ruler, a one-sentence lede, a ranked "needs you" queue with the limitations date pinned on top, the case spine and a section index. The full summary is one click away.
 - **Money ruler.** Value as one bar: the solid part is what the per-person limit covers, the lien is carved out of it, and the hatched part is exposure. Ticks mark billed specials and specials plus wage loss, which shows that the bills alone already exceed the limit.
@@ -42,7 +44,7 @@ Briefing tested best, but it still asked the reader to take in too much at once:
 - **Neither page changed the access layer.** Both read only the role-scoped payloads from `lib/access`; every sentence is assembled from those fields.
 - **Light / dark toggle** in the masthead on every A2 page and on the shared link. It follows the system until you pick, remembers the choice per browser (localStorage; a convenience, not shared state), and is restored by a tiny script in `<head>` before first paint, so there is no flash. The icon is chosen by CSS for the same reason. Colours cross-fade for 260 ms when you switch (instant under reduced motion). Scoped to `.opt-a2`, so the other options still follow the system.
 
-Screens: `docs/screens/option-a2-*`.
+Screens: `docs/screens/front-page-*`.
 
 ## What each option optimizes for
 
@@ -122,6 +124,5 @@ Method: `improve-animations` audit (inline), then impeccable critique per option
 
 ## Deliverables
 
-- Screenshots for Firm, Provider and Client in each option, desktop (1440×900) and tablet (820×1180): `docs/screens/`. Story's firm view has a viewport capture for each chapter, and Briefing and Story have dark-mode captures.
-- Animation clips: `docs/motion/option-a-briefing`, `option-b-story`, `option-c-command` (`.gif` and `.mp4`). Regenerate everything with `node scripts/capture.mjs <baseUrl>`.
+- Front Page screenshots for Firm, Provider and Client, desktop (1440×900), tablet (820×1180) and dark: `docs/screens/front-page-*`. Regenerate with `node scripts/capture.mjs <baseUrl>`. (The A/B/C screenshots and animation clips were removed with those options.)
 - Checks: `npm test` (28 derive and access tests), `node scripts/smoke.mjs <baseUrl>` (real-input smoke test), `npx tsc --noEmit`, `npx eslint .`, `npm run build`.

@@ -71,13 +71,13 @@
 
 
 /* ------------------------------------------------------------------------
-   Design tokens. Every option defines the same semantic names, so shared
-   atoms (source chips, drawer, switcher) pick up each option's world.
+   Design tokens. Shared atoms (source chips, drawer, switcher) read these
+   semantic names; the Front Page (.opt-a) sets them for its world.
    Tokens sit on <html> via :has() so portaled overlays inherit them.
    ------------------------------------------------------------------------ */
 
 :root {
-  /* Index page: neutral graphite. */
+  /* Fallback: neutral graphite. */
   --paper: #f3f3f1;
   --paper-2: #e9e9e6;
   --card-bg: #fbfbfa;
@@ -100,7 +100,7 @@
   --scrim: color-mix(in oklab, var(--ink) 16%, transparent);
 }
 
-/* Option A: Briefing. Warm newsprint neutrals, ink-blue for sourced facts. */
+/* Front Page base tokens: warm newsprint neutrals, ink-blue for sourced facts. */
 html:has(.opt-a) {
   --paper: #f1efea;
   --paper-2: #e8e5dd;
@@ -142,74 +142,7 @@ html:has(.opt-a) {
   }
 }
 
-/* Option B: Story. Cool porcelain and deep navy, cobalt signal. */
-html:has(.opt-b) {
-  --paper: #f3f5f8;
-  --paper-2: #e8ecf2;
-  --card-bg: #ffffff;
-  --ink: #0e1726;
-  --ink-soft: #4e5b70;
-  --line: #d8dee7;
-  --line-strong: #b3bfcf;
-  --signal: #2a49d4;
-  --signal-wash: #e3e8fc;
-  --exposure: #c0392b;
-  --exposure-wash: #fbe4e1;
-  --caution: #955400;
-  --caution-wash: #fbebd3;
-  --good: #19724d;
-  --good-wash: #ddf1e7;
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
-  --font-text: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-num: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --radius: 1rem;
-}
-@media (prefers-color-scheme: dark) {
-  html:has(.opt-b) {
-    --paper: #0a1120;
-    --paper-2: #0f182b;
-    --card-bg: #121c31;
-    --ink: #e9eef6;
-    --ink-soft: #9aa7bc;
-    --line: #22304a;
-    --line-strong: #364769;
-    --signal: #8ea2ff;
-    --signal-wash: #1c2850;
-    --exposure: #ff8b76;
-    --exposure-wash: #3a1a17;
-    --caution: #f2b866;
-    --caution-wash: #3a2a10;
-    --good: #6fd3a5;
-    --good-wash: #0f3326;
-  }
-}
-
-/* Option C: Command. Blue-graphite instrument panel, cyan signal. Dark only. */
-html:has(.opt-c) {
-  color-scheme: dark;
-  --paper: #0c0f13;
-  --paper-2: #12161c;
-  --card-bg: #151a21;
-  --ink: #e7ebf0;
-  --ink-soft: #8f9aa9;
-  --line: #2c3644;
-  --line-strong: #3d4a5c;
-  --scrim: rgb(3 5 8 / 0.55);
-  --signal: #5cb8f4;
-  --signal-wash: #112a3c;
-  --exposure: #ff7062;
-  --exposure-wash: #3a1715;
-  --caution: #f2b544;
-  --caution-wash: #382b10;
-  --good: #4fc58e;
-  --good-wash: #0f2e21;
-  --font-display: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
-  --font-text: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
-  --font-num: var(--font-plex-mono), ui-monospace, monospace;
-  --radius: 0.5rem;
-}
-
-/* shadcn semantic tokens follow the option tokens. */
+/* shadcn semantic tokens follow the page tokens. */
 :root {
   --background: var(--paper);
   --foreground: var(--ink);
@@ -434,7 +367,7 @@ main.sync-dim {
 }
 
 /* ------------------------------------------------------------------------
-   Option A2: Front Page. Briefing's tokens (.opt-a) plus linked highlighting
+   Front Page: the base tokens (.opt-a) plus linked highlighting
    and the pending-surgery orbit.
    ------------------------------------------------------------------------ */
 .a2-linkable {
@@ -472,7 +405,7 @@ main.sync-dim {
 
 /* Front Page theme override. The masthead toggle writes data-a2-theme on
    <html> (restored before paint by the root layout); without it the page
-   follows the system setting like Briefing does. Scoped to .opt-a2 pages. */
+   follows the system setting. Scoped to .opt-a2 pages. */
 html[data-a2-theme="light"]:has(.opt-a2) {
   color-scheme: light;
   --paper: #f1efea;

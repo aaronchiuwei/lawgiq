@@ -1,7 +1,7 @@
 "use client";
 
-import { FrontPageProvider } from "@/components/option-a2/provider-view";
-import { ThemeToggle } from "@/components/option-a2/theme-toggle";
+import { FrontPageProvider } from "@/components/front-page/provider-view";
+import { ThemeToggle } from "@/components/front-page/theme-toggle";
 import type { ProviderView } from "@/lib/access";
 import { fmtDate } from "@/lib/format";
 import { SourceProvider } from "./sources";

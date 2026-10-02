@@ -4,8 +4,8 @@ import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lawgiq · Case dashboard prototypes",
-  description: "Three UI options for a visual case digest, read live from Clio Manage.",
+  title: "Lawgiq",
+  description: "A visual case digest for a personal-injury matter, read from Clio Manage.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -49,7 +49,7 @@ import { useFront, useLinkHandlers, useLinked, type Depth } from "./state";
 gsap.registerPlugin(useGSAP);
 
 /**
- * Option A2, Front Page, as a dashboard. Briefing's editorial voice inside
+ * Front Page, as a dashboard. An editorial voice inside
  * clear boxes: a client card and a summary card, a strip of labelled money
  * KPIs, then a bento of labelled cards (needs you, timeline, what changed,
  * injuries, care, specials, liability, strength). Every card answers its
@@ -1107,7 +1107,7 @@ function Care({ view, depth }: { view: FirmView; depth: Depth }) {
           {share ? "Close sharing" : "Choose what each provider sees"}
         </button>
       </div>
-      {share ? <ShareEditor className="mt-6" drafts={view.providerDrafts} shares={view.shares} previewHref={(id) => `/option-a2?role=provider&provider=${encodeURIComponent(id)}`} /> : null}
+      {share ? <ShareEditor className="mt-6" drafts={view.providerDrafts} shares={view.shares} previewHref={(id) => `/?role=provider&provider=${encodeURIComponent(id)}`} /> : null}
     </div>
   );
 }

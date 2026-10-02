@@ -1,4 +1,4 @@
-// Real-input smoke test: wheel, keyboard and clicks must work on every view.
+// Real-input smoke test: wheel, keyboard and clicks must work on every role view.
 //   node scripts/smoke.mjs [baseUrl]
 import { chromium } from "playwright-core";
 
@@ -10,10 +10,11 @@ const check = (ok, msg) => {
   if (!ok) failed++;
 };
 
-for (const opt of ["option-a", "option-b", "option-c"]) {
-  for (const q of ["", "?role=provider&provider=contact-mcculloch", "?role=client"]) {
+{
+  const opt = "front page";
+  for (const q of ["", "?role=provider", "?role=client"]) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    await page.goto(`${BASE}/${opt}${q}`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/${q}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
     await page.mouse.move(700, 500);
     await page.mouse.wheel(0, 600);

@@ -38,16 +38,13 @@ npm test                                    # derive + access tests, run against
 
 ## The app
 
-A visual digest of the matter in three UI options you can compare side by side. Each option has a Firm, Medical provider and Client view, cut by a role-scoped access layer on the server.
+A visual digest of the matter at `/` (the Front Page), with a Firm, Medical provider and Client view cut by a role-scoped access layer on the server.
 
-- `/` compares the options and links to every role view.
-- `/option-a` Briefing: editorial and calm (GSAP).
-- `/option-b` Story: cinematic scroll narrative (GSAP + ScrollTrigger).
-- `/option-c` Command: dense dark bento with ⌘K (Motion).
+- `/` is the firm view; `/?role=provider&provider=<id>` and `/?role=client` are the other roles. Depth dial (Glance / Brief / Full), "Brief me" walkthrough and a light/dark toggle are in the masthead.
 - `/p/<token>` is the open-tracked link a provider receives when the attorney shares.
 - `/api/view?role=provider&provider=<id>` returns the exact payload a provider's browser gets. Use it to check the access boundary.
 
-See [DECISIONS.md](DECISIONS.md) for what each option optimizes for, the trade-offs and the recommendation for the demo video. Screenshots are in [docs/screens](docs/screens) and animation clips in [docs/motion](docs/motion).
+See [DECISIONS.md](DECISIONS.md) for the design record. Screenshots are in [docs/screens](docs/screens) (`node scripts/capture.mjs` regenerates them; `node scripts/smoke.mjs` drives real input on every role view).
 
 Optional settings in `.env` (Next.js reads it too):
 
@@ -70,8 +67,8 @@ lib/access/    role-scoped selectors: firm, provider (allowlisted + attorney tog
 lib/ai/        optional Claude digest, cached per data hash
 lib/db/        SQLite: snapshots, digests, last-opened, provider visibility, sharing log, photos
 lib/server/    the one entry point pages call: load, derive, select by role
-components/case/       trust layer (source chips + drawer), sync, role switcher, shared viz
-components/option-*/   the three designs; they only consume selector output
+components/case/        trust layer (source chips + drawer), sync, role switcher, shared viz
+components/front-page/  the UI; it only consumes selector output
 tests/                 derive and access tests
 ui/                    legacy Python preview dashboard (python ui/dashboard.py, http://127.0.0.1:8765)
 ```

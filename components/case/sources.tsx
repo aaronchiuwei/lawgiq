@@ -192,7 +192,7 @@ type ChipVariant = "chip" | "footnote" | "inline" | "icon";
 
 /**
  * A consistent pointer to evidence. `chip` is the default small pill;
- * `footnote` renders a superscript marker (Briefing); `inline` wraps its
+ * `footnote` renders a superscript marker; `inline` wraps its
  * children as the trigger; `icon` is a bare 20px glyph button.
  */
 export function SourceChip({
