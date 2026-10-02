@@ -26,20 +26,50 @@ const LANES: Lane[] = [
 const laneOf = (e: RankedEvent): Lane["id"] | null =>
   e.category === "liability" ? "liability" : e.category === "medical" || e.category === "damages" ? "medical" : e.category === "legal" || e.category === "coverage" ? "legal" : null;
 
-export function CaseSpine({ c, className }: { c: CaseFile; className?: string }) {
-  const { link, setLink } = useFront();
-  const { open } = useSources();
-  const reasonFor = (e: RankedEvent) => c.digest.reasons?.[e.id] ?? e.reason;
-
+/** The shared time axis: incident to today (or the last deadline in the next 45 days). */
+function useSpineScale(c: CaseFile) {
   const start = c.matter.dateOfIncident?.value ?? c.matter.openDate;
   const upcoming = c.deadlines.filter((d) => d.kind !== "treatment" && d.daysUntil >= 0 && d.daysUntil <= 45);
   const lastUpcoming = upcoming.map((d) => d.date).sort().at(-1);
   const end = lastUpcoming && lastUpcoming > c.today ? lastUpcoming : c.today;
   const span = Math.max(1, daysBetween(start, end) * 1.015);
   const pct = (d: string) => Math.min(100, Math.max(0, (daysBetween(start, d) / span) * 100));
-
   const years: string[] = [];
   for (let y = Number(start.slice(0, 4)) + 1; y <= Number(end.slice(0, 4)); y++) years.push(`${y}-01-01`);
+  const openQ = c.treatment.procedures.find((p) => p.status === "recommended" && p.date && p.openForDays !== null) ?? null;
+  return { start, end, upcoming, pct, years, openQ };
+}
+
+/** Hover, focus and arrow-key stepping through the ranked moments, shared by both spines. */
+function useMoments(c: CaseFile) {
+  const { link, setLink } = useFront();
+  const top = useMemo(() => [...c.topEvents].sort((a, b) => a.date.localeCompare(b.date)), [c.topEvents]);
+  const topIds = new Set(top.map((e) => e.id));
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const shownId = activeId ?? (link?.source === "hover" ? link.events.find((id) => topIds.has(id)) ?? null : null) ?? top.at(-1)?.id ?? null;
+  const shown = top.find((e) => e.id === shownId) ?? null;
+  const btns = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const activate = (e: RankedEvent | null) => {
+    setActiveId(e?.id ?? null);
+    setLink(e ? { providers: e.providerIds, events: [e.id], source: "hover" } : null);
+  };
+  const onKey = (ev: KeyboardEvent, i: number) => {
+    const next = ev.key === "ArrowRight" ? i + 1 : ev.key === "ArrowLeft" ? i - 1 : ev.key === "Home" ? 0 : ev.key === "End" ? top.length - 1 : null;
+    if (next === null) return;
+    ev.preventDefault();
+    btns.current[Math.max(0, Math.min(top.length - 1, next))]?.focus();
+  };
+  const dimmed = (e: RankedEvent) =>
+    link?.source === "changes" ? !link.events.includes(e.id) : link?.source === "hover" && !link.events.includes(e.id) && !e.providerIds.some((p) => link.providers.includes(p));
+  return { link, top, topIds, shown, btns, activate, onKey, dimmed };
+}
+
+export function CaseSpine({ c, className }: { c: CaseFile; className?: string }) {
+  const { link, top, topIds, shown, btns, activate, onKey } = useMoments(c);
+  const { open } = useSources();
+  const reasonFor = (e: RankedEvent) => c.digest.reasons?.[e.id] ?? e.reason;
+  const { start, end, upcoming, pct, years, openQ } = useSpineScale(c);
 
   // File activity per month: the pulse of the file. Quiet months show as quiet.
   const months = useMemo(() => {
@@ -56,30 +86,9 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
   }, [c.events, start, c.today]);
   const maxMonth = Math.max(1, ...months.map((m) => m.n));
 
-  const top = useMemo(() => [...c.topEvents].sort((a, b) => a.date.localeCompare(b.date)), [c.topEvents]);
-  const topIds = new Set(top.map((e) => e.id));
   const minScore = Math.min(...top.map((e) => e.score));
   const maxScore = Math.max(...top.map((e) => e.score));
   const size = (s: number) => 11 + ((s - minScore) / Math.max(0.01, maxScore - minScore)) * 9;
-
-  const openQ = c.treatment.procedures.find((p) => p.status === "recommended" && p.date && p.openForDays !== null) ?? null;
-  const defaultId = top.at(-1)?.id ?? null;
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const shownId = activeId ?? (link?.source === "hover" ? link.events.find((id) => topIds.has(id)) ?? null : null) ?? defaultId;
-  const shown = top.find((e) => e.id === shownId) ?? null;
-  const btns = useRef<(HTMLButtonElement | null)[]>([]);
-
-  const activate = (e: RankedEvent | null) => {
-    setActiveId(e?.id ?? null);
-    setLink(e ? { providers: e.providerIds, events: [e.id], source: "hover" } : null);
-  };
-
-  const onKey = (ev: KeyboardEvent, i: number) => {
-    const next = ev.key === "ArrowRight" ? i + 1 : ev.key === "ArrowLeft" ? i - 1 : ev.key === "Home" ? 0 : ev.key === "End" ? top.length - 1 : null;
-    if (next === null) return;
-    ev.preventDefault();
-    btns.current[Math.max(0, Math.min(top.length - 1, next))]?.focus();
-  };
 
   const minorOn = (lane: Lane["id"]) => c.events.filter((e) => !topIds.has(e.id) && laneOf(e) === lane && e.date >= start && e.date <= end);
   const changes = link?.source === "changes" ? new Set(link.events) : null;
@@ -250,6 +259,121 @@ export function CaseSpine({ c, className }: { c: CaseFile; className?: string })
           </AnimatePresence>
         </div>
       </figcaption>
+    </figure>
+  );
+}
+
+/**
+ * The minimized spine for the board: one track from incident to today with
+ * the ranked moments as dots (coloured by lane), the limitations date, today
+ * and the open question. No activity bars, lanes or minor records; opening
+ * the card shows the full CaseSpine and the story.
+ */
+export function CaseSpineSimple({ c, className }: { c: CaseFile; className?: string }) {
+  const { top, shown, btns, activate, onKey, dimmed } = useMoments(c);
+  const { open } = useSources();
+  const reasonFor = (e: RankedEvent) => c.digest.reasons?.[e.id] ?? e.reason;
+  const { start, end, pct, years, openQ } = useSpineScale(c);
+  const colorOf = (e: RankedEvent) => LANES.find((l) => l.id === laneOf(e))?.color ?? "var(--ink-soft)";
+
+  return (
+    <figure className={cn("a2-spine flex flex-1 flex-col", className)} aria-label={`Key moments from ${fmtDate(start)} to ${fmtDate(end)}`}>
+      <div className="relative mx-2 h-12">
+        <span data-spine-line aria-hidden className="absolute inset-x-0 top-1/2 h-px origin-left bg-line-strong" />
+        {years.map((y) => (
+          <span key={y} aria-hidden className="absolute top-1/2 h-2 w-px -translate-y-1/2 bg-line-strong" style={{ left: `${pct(y)}%` }} />
+        ))}
+        {openQ ? (
+          // Just under the track, so the moments on it stay readable.
+          <span
+            aria-hidden
+            data-spine-open
+            className="absolute top-[calc(50%+8px)] h-0 origin-left border-t-[1.5px] border-dashed border-exposure"
+            style={{ left: `${pct(openQ.date!)}%`, width: `${pct(c.today) - pct(openQ.date!)}%` }}
+            title={`${capitalize(openQ.label)}: open ${openQ.openForDays} days`}
+          />
+        ) : null}
+        {c.sol.date && c.sol.date >= start && c.sol.date <= end ? (
+          <span
+            aria-hidden
+            className="absolute inset-y-1 border-l border-dashed"
+            style={{ left: `${pct(c.sol.date)}%`, borderColor: c.sol.status === "satisfied" ? "var(--good)" : "var(--exposure)" }}
+          >
+            <span
+              className={cn(
+                "absolute -top-2 left-0 flex -translate-x-1/2 items-center gap-0.5 whitespace-nowrap rounded-full px-1 text-[10px] font-medium",
+                c.sol.status === "satisfied" ? "bg-good-wash text-good" : "bg-exposure-wash text-exposure",
+              )}
+            >
+              {c.sol.status === "satisfied" ? <CheckIcon size={9} weight="bold" /> : null}
+              SOL
+            </span>
+          </span>
+        ) : null}
+        <span aria-hidden className="absolute inset-y-1 w-0.5 -translate-x-1/2 bg-signal" style={{ left: `${pct(c.today)}%` }} />
+        {top.map((e, i) => (
+          <button
+            key={e.id}
+            ref={(el) => {
+              btns.current[i] = el;
+            }}
+            type="button"
+            data-spine-dot
+            aria-label={`${fmtDate(e.date)}: ${e.title}. ${reasonFor(e) ?? ""}`}
+            onPointerEnter={() => activate(e)}
+            onPointerLeave={() => activate(null)}
+            onFocus={() => activate(e)}
+            onBlur={() => activate(null)}
+            onKeyDown={(ev) => onKey(ev, i)}
+            onClick={() => open([e.source, ...e.duplicates])}
+            className="group absolute top-1/2 z-10 grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
+            style={{ left: `${pct(e.date)}%` }}
+          >
+            <span
+              className={cn(
+                "block size-3 rounded-full ring-[3px] ring-card-bg transition-[transform,opacity] duration-200 ease-out group-hover:scale-125",
+                shown?.id === e.id && "scale-125",
+                dimmed(e) && "opacity-25",
+              )}
+              style={{ background: colorOf(e) }}
+            />
+          </button>
+        ))}
+      </div>
+      <div className="tnum relative mx-2 h-4 text-[11px] text-ink-soft" aria-hidden>
+        <span className="absolute left-0 -translate-x-1/2">{start.slice(0, 4)}</span>
+        {years.map((y) => (
+          <span key={y} className="absolute -translate-x-1/2" style={{ left: `${pct(y)}%` }}>
+            {y.slice(0, 4)}
+          </span>
+        ))}
+        <span className="absolute -translate-x-1/2 font-medium text-signal" style={{ left: `${pct(c.today)}%` }}>
+          Today
+        </span>
+      </div>
+      <figcaption className="mt-2 flex min-h-[1.5rem] items-baseline gap-2 text-[13px]" aria-live="polite">
+        {shown ? (
+          <>
+            <span className="tnum shrink-0 text-ink-soft">{fmtDate(shown.date)}</span>
+            <span className="truncate text-ink">{shown.title}</span>
+            {reasonFor(shown) ? <span className="hidden shrink-0 text-ink-soft sm:inline">· {reasonFor(shown)}</span> : null}
+          </>
+        ) : null}
+      </figcaption>
+      <p className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-2.5 text-[11.5px] text-ink-soft" aria-hidden>
+        {LANES.map((l) => (
+          <span key={l.id} className="inline-flex items-center gap-1.5">
+            <span className="size-2 rounded-full" style={{ background: l.color }} />
+            {l.label}
+          </span>
+        ))}
+        {openQ ? (
+          <span className="inline-flex items-center gap-1.5 text-exposure">
+            <span className="w-4 border-t-[1.5px] border-dashed border-exposure" />
+            {capitalize(openQ.label)}: open {openQ.openForDays} days
+          </span>
+        ) : null}
+      </p>
     </figure>
   );
 }

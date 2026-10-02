@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils";
 import { BodyMap } from "./body-map";
 import { BriefMe } from "./brief-me";
 import { MoneyRuler } from "./money";
-import { CaseSpine } from "./spine";
+import { CaseSpine, CaseSpineSimple } from "./spine";
 import { useFront, useLinkHandlers, useLinked, type Depth } from "./state";
 
 gsap.registerPlugin(useGSAP);
@@ -383,19 +383,23 @@ function Bento({ view, h }: { view: FirmView; h: CaseHeadlines }) {
       hl: h.story,
       figure: `${c.topEvents.length} moments`,
       flag: storyConflicts.length ? <ConflictCount items={storyConflicts} /> : null,
-      body: (d) => (
-        <div>
-          <div data-brief="spine">
-            <CaseSpine c={c} />
-          </div>
-          {d === 3 ? (
+      // On the board: the simple spine. Opened in full (or at Full depth): every lane and the story.
+      body: (d) =>
+        d === 3 ? (
+          <div>
+            <div data-brief="spine">
+              <CaseSpine c={c} />
+            </div>
             <div className="mt-6 border-t border-line pt-5">
               <Story c={c} depth={3} />
               {storyConflicts.length ? <MarginConflicts items={storyConflicts} className="mt-6" /> : null}
             </div>
-          ) : null}
-        </div>
-      ),
+          </div>
+        ) : (
+          <div data-brief="spine" className="flex flex-1 flex-col">
+            <CaseSpineSimple c={c} />
+          </div>
+        ),
     },
     {
       id: "changes",
