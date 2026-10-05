@@ -1,6 +1,6 @@
 # Lawgiq
 
-Swans x Law Di Gras 2026 Applied AI Hackathon
+Swans x Law Di Gras 2026 Applied AI Hackathon (Won 3rd Place)
 
 An AI case dashboard for a personal-injury firm. It digests one Clio Manage matter (Sapini) for three audiences: the firm (what matters most, what is due), the client's treating medical providers (only what is safe to share) and the client.
 
